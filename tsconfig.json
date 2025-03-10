@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "src/screens/PatientRegistration.jsx",
+    "app/(tab)/_layout.jsx",
+    "src/screens/Report.jsx",
+    "src/Auth/authService.ts",
+    "src/screens/Appointment.jsx"
+, "src/components/pageComponents/Appointment/Updation.jsx", "src/components/pageComponents/Appointment/UpdateAppoint.tsx", "src/components/pageComponents/Appointment/TokenGenerator.jsx", "src/components/Reuseable/GetDoctors.jsx"  ],
+  "extends": "expo/tsconfig.base"
+}
