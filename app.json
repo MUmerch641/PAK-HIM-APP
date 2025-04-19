@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "pakHim",
-    "slug": "pakHim",
+    "name": "PakHims",
+    "slug": "pakhims",
+    "owner": "mumerch",
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -15,9 +16,9 @@
       "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#fffd"
       },
-      "package": "com.umerch.pakHim"
+      "package": "com.mumerch.pakhims"
     },
     "web": {
       "bundler": "metro",
@@ -29,7 +30,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/adaptive-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
@@ -39,21 +40,21 @@
     "experiments": {
       "typedRoutes": true
     },
-    "extra": {
-      "router": {
-        "origin": false
-      },
-      "eas": {
-        "projectId": "61653250-bd71-4afa-bc14-41910dc12ec6"
-      }
-    },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
       "enabled": true,
       "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/61653250-bd71-4afa-bc14-41910dc12ec6"
+      "url": "https://u.expo.dev/6a8155ed-b6ad-45c8-891f-aad0b65524e5"
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "6a8155ed-b6ad-45c8-891f-aad0b65524e5"
+      }
     }
   }
 }

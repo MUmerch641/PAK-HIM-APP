@@ -2,10 +2,9 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemeProvider, useTheme } from '../src/utils/ThemeContext'; // Adjust the path as neededfunction CustomLayout({ children }: { children: ReactNode }) {
-import { useColorScheme } from 'react-native';
+import { ThemeProvider, useTheme } from '../src/utils/ThemeContext'; 
+
 import { ReactNode } from 'react';
-import { colors } from '../src/utils/color';
 function CustomLayout({ children }: { children: ReactNode }) {
 
   const { currentColors } = useTheme();
@@ -26,8 +25,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="Login" />
-          <Stack.Screen name="SignUp" />
-          <Stack.Screen name="(tab)" /> {/* Tabs (Main App) */}
+          <Stack.Screen name="(tab)" /> 
         </Stack>
       </CustomLayout>
     </ ThemeProvider>

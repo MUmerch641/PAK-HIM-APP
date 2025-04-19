@@ -1,9 +1,10 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { api } from "../../../api"; // Adjust the import path as necessary
 import Toast from "react-native-toast-message";
+import { router } from "expo-router";
+import { api } from "@/api";
 
-const BASE_URL = "https://pakhims.com/stg_user-api";
+const BASE_URL = "https://pakhims.com/user-api";
 
 interface Service {
   _id: string;
@@ -29,12 +30,13 @@ interface DoctorsResponse {
 interface GetDoctorsParams {
   count?: number;
   pageNo?: number;
-  sort?: 'ascending' | 'descending';
+  sort?: 'accending' | 'descending';
   receptionistId?: string;
 }
 
 interface Appointment {
   doctorId: string;
+  patientId?: string; // Added for new API
   services: string[];
   feeStatus: string;
   appointmentDate: string;
@@ -72,6 +74,41 @@ interface PatientResponse {
   isSuccess: boolean;
   data: any; // You might want to define a more specific type here
   message?: string;
+}
+
+interface InsuranceCompany {
+  _id: string;
+  companyName: string;
+  isActive: boolean;
+  // Add other insurance company fields as needed
+}
+
+interface InsuranceCompaniesResponse {
+  data: InsuranceCompany[];
+  totalCount: number;
+  currentPage: number;
+}
+
+interface GetInsuranceCompaniesParams {
+  count?: number;
+  pageNo?: number;
+  sort?: 'accending' | 'descending';
+  isActive?: boolean;
+  search?: string;
+}
+
+interface InsuranceService {
+  _id: string;
+  serviceName: string;
+  companyId: string;
+  isActive: boolean;
+  // Add other insurance service fields as needed
+}
+
+interface InsuranceServicesResponse {
+  data: InsuranceService[];
+  totalCount: number;
+  currentPage: number;
 }
 
 export const getAuthToken = async (): Promise<string | null> => {
@@ -140,6 +177,55 @@ export const registerPatient = async (patientData: PatientData): Promise<any> =>
   }
 };
 
+export const addAppointment = async (appointmentData: Appointment): Promise<any> => {
+  try {
+    if (!validateHexId(appointmentData.doctorId)) {
+      throw new Error("Invalid doctorId format");
+    }
+    if (appointmentData.patientId && !validateHexId(appointmentData.patientId)) {
+      throw new Error("Invalid patientId format");
+    }
+    for (const serviceId of appointmentData.services) {
+      if (!validateHexId(serviceId)) {
+        throw new Error("Invalid serviceId format");
+      }
+    }
+    const token = await getAuthToken();
+    if (!token) {
+      Toast.show({
+        type: "error",
+        text1: "Authentication Error",
+        text2: "No authentication token found",
+      });
+      throw new Error("No auth token found");
+    }
+
+    const response = await axios.post(`${BASE_URL}/appointments/addAppointment`, appointmentData, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.status === 201) {
+      Toast.show({
+        type: "success",
+        text1: "Success",
+        text2: "Appointment created successfully",
+      });
+      return response.data;
+    }
+  } catch (error: any) {
+    console.error("Error creating appointment:", error.response?.data || error.message);
+    Toast.show({
+      type: "error",
+      text1: "Appointment Creation Failed",
+      text2: error.response?.data?.message || "Something went wrong",
+    });
+    throw error;
+  }
+};
+
 export const getDoctors = async (params: GetDoctorsParams): Promise<DoctorsResponse> => {
   try {
     const token = await getAuthToken();
@@ -156,7 +242,7 @@ export const getDoctors = async (params: GetDoctorsParams): Promise<DoctorsRespo
     const queryParams: any = {
       count: params.count ?? 10,
       pageNo: params.pageNo ?? 1,
-      sort: params.sort ?? 'accending', // Fix typo from API
+      sort: params.sort ?? 'accending', 
     };
 
     if (params.receptionistId) {
@@ -233,4 +319,158 @@ export const getPatientByName = async (name: string): Promise<PatientResponse> =
   return handlePatientRequest(`/patient-registration/getPatientByName/${encodeURIComponent(name)}`);
 };
 
+export const updatePatient = async (
+  id: string,
+  patientData: {
+    patientName?: string;
+    guardiansName?: string;
+    gender?: string;
+    dob?: string;
+    phonNumber?: string;
+    cnic?: string;
+    helthId?: string;
+    city?: string;
+    reference?: string;
+    extra?: { [key: string]: any };
+  }
+): Promise<void> => {
+  try {
+    const token = await getAuthToken();
+    if (!token) {
+      router.replace('/Login');
+      throw new Error("No auth token found");
+    }
 
+    const response = await api.put(
+      `/patient-registration/updatePatient/${id}`,
+      patientData,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (response.status === 200) {
+      Toast.show({
+        type: "success",
+        text1: "Success",
+        text2: "Patient information updated successfully",
+      });
+    } else {
+      throw new Error(`Failed to update patient: ${response.statusText}`);
+    }
+  } catch (error: any) {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      router.replace('/Login');
+    }
+    Toast.show({
+      type: "error",
+      text1: "Error",
+      text2: error.response?.data?.message || "Error updating patient information",
+    });
+    throw error;
+  }
+};
+
+export const getInsuranceCompanies = async (params: GetInsuranceCompaniesParams): Promise<InsuranceCompaniesResponse> => {
+  try {
+    const token = await getAuthToken();
+    if (!token) {
+      Toast.show({
+        type: "error",
+        text1: "Authentication Error",
+        text2: "No authentication token found",
+      });
+      throw new Error("No auth token found");
+    }
+
+    const url = `${BASE_URL}/insurance-companies/getAllCompanies`;
+    const queryParams: any = {
+      count: params.count ?? 10,
+      pageNo: params.pageNo ?? 1,
+      sort: params.sort ?? 'accending',
+    };
+
+    if (params.isActive !== undefined) {
+      queryParams.isActive = params.isActive;
+    }
+
+    if (params.search) {
+      queryParams.search = params.search;
+    }
+
+    const response = await axios.get(url, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      params: queryParams,
+    });
+
+    const insuranceCompanies: InsuranceCompany[] = response.data.data.map((company: any) => ({
+      _id: company._id,
+      companyName: company.companyName,
+      isActive: company.isActive,
+      // Map other fields as needed
+    }));
+
+    return { 
+      data: insuranceCompanies, 
+      totalCount: response.data.totalCount, 
+      currentPage: params.pageNo ?? 1 
+    };
+  } catch (error: any) {
+    console.log("Error fetching insurance companies:", error.response?.data || error.message);
+  
+    throw error;
+  }
+};
+
+export const getInsuranceServicesByCompanyId = async (companyId: string): Promise<InsuranceServicesResponse> => {
+  try {
+    if (!validateHexId(companyId)) {
+      throw new Error("Invalid companyId format");
+    }
+    
+    const token = await getAuthToken();
+    if (!token) {
+      Toast.show({
+        type: "error",
+        text1: "Authentication Error",
+        text2: "No authentication token found",
+      });
+      throw new Error("No auth token found");
+    }
+
+    const url = `${BASE_URL}/insurance-services/getAllServciesByComapnayId/${companyId}`;
+    
+    const response = await axios.get(url, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const insuranceServices: InsuranceService[] = response.data.data.map((service: any) => ({
+      _id: service._id,
+      serviceName: service.serviceName,
+      companyId: service.companyId,
+      isActive: service.isActive,
+      fee: service.fees,
+      // Map other fields as needed
+    }));
+
+    return { 
+      data: insuranceServices, 
+      totalCount: response.data.totalCount || insuranceServices.length, 
+      currentPage: 1 
+    };
+  } catch (error: any) {
+    console.error("Error fetching insurance services:", error.response?.data || error.message);
+    Toast.show({
+      type: "error",
+      text1: "Error",
+      text2: error.response?.data?.message || "Error fetching insurance services",
+    });
+    throw error;
+  }
+};

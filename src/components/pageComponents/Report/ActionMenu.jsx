@@ -1,21 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { View, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, TouchableOpacity, Text, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { moderateScale } from 'react-native-size-matters';
 import { StyleSheet } from 'react-native';
 import { getFinancialReport } from '@/src/ApiHandler/Report';
-import * as XLSX from 'xlsx';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
 
 const actionItems = [
   { icon: <Ionicons name="eye-outline" size={moderateScale(20)} color="#9daf4c" />, label: 'View' },
-  { icon: <Ionicons name="print-outline" size={moderateScale(20)} color="#4cf436" />, label: 'Print' },
+  { icon: <Ionicons name="download-outline" size={moderateScale(20)} color="#4cf436" />, label: 'PDF' },
 ];
 
-const ActionMenu = ({ visible, onClose, style, report, setShowViewScreen, dateRange, setReports, setOverlayLoading, closeExpandable,currentColors }) => { // Add setShowViewScreen prop
-
+const ActionMenu = ({ visible, onClose, style, report, setShowViewScreen, dateRange, setReports, setOverlayLoading, closeExpandable, currentColors }) => {
   if (!visible) return null;
+
   useEffect(() => {
     if (visible) {
       closeExpandable();
@@ -29,7 +29,7 @@ const ActionMenu = ({ visible, onClose, style, report, setShowViewScreen, dateRa
         doctorIds: [report.DoctorId],
         fromDate: dateRange.fromDate,
         toDate: dateRange.toDate,
-        feeStatus: "paid"
+        feeStatus: "paid",
       };
       const response = await getFinancialReport(params);
       setReports(response);
@@ -46,38 +46,106 @@ const ActionMenu = ({ visible, onClose, style, report, setShowViewScreen, dateRa
         doctorIds: [report.DoctorId],
         fromDate: dateRange.fromDate,
         toDate: dateRange.toDate,
-        feeStatus: "paid"
+        feeStatus: "paid",
       };
       const response = await getFinancialReport(params);
-      const data = response.map(report => ({
-        Name: report.name || '-',
-        Discount: report.discount || '-',
-        Discountent: report.discountentName || '-',
-        'Created by': report.createdBy || '-',
-        'Service Charge': report.servicesCharges || '-',
-        'Dr. Charge': report.doctoreCharges || '-',
-      }));
 
-      // Convert data to worksheet
-      const worksheet = XLSX.utils.json_to_sheet(data);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      // Generate HTML content for the PDF
+      const htmlContent = `
+        <html>
+          <head>
+            <style>
+              table {
+                width: 100%;
+                border-collapse: collapse;
+              }
+              th, td {
+                border: 1px solid black;
+                padding: 8px;
+                text-align: left;
+              }
+              th {
+                background-color: #f2f2f2;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>Total Report</h1>
+            <p>Date: ${dateRange.fromDate} to ${dateRange.toDate}</p>
+            <table>
+              <tr>
+                <th>Name</th>
+                <th>Discount</th>
+                <th>Discountent</th>
+                <th>Created by</th>
+                <th>Service Charge</th>
+                <th>Dr. Charge</th>
+              </tr>
+              ${response.map(report => `
+                <tr>
+                  <td>${report.name || '-'}</td>
+                  <td>${report.discount || '-'}</td>
+                  <td>${report.discountentName || '-'}</td>
+                  <td>${report.createdBy || '-'}</td>
+                  <td>${report.servicesCharges || '-'}</td>
+                  <td>${report.doctoreCharges || '-'}</td>
+                </tr>
+              `).join('')}
+            </table>
+          </body>
+        </html>
+      `;
 
-      // Convert workbook to binary Excel format
-      const excelBinary = XLSX.write(workbook, { type: "base64", bookType: "xlsx" });
+      // Generate PDF
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
 
       // Define file path
-      const fileUri = FileSystem.cacheDirectory + `Total_Report_${dateRange.fromDate}_to_${dateRange.toDate}.xlsx`;
+      let fileUri;
+      if (Platform.OS === 'android') {
+        // First, move to cache directory
+        fileUri = `${FileSystem.cacheDirectory}Total_Report_${dateRange.fromDate}_to_${dateRange.toDate}.pdf`;
+        await FileSystem.moveAsync({ from: uri, to: fileUri });
 
-      // Write file
-      await FileSystem.writeAsStringAsync(fileUri, excelBinary, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+        // Check if the file exists
+        const fileInfo = await FileSystem.getInfoAsync(fileUri);
+        if (!fileInfo.exists) {
+          throw new Error('Failed to create PDF file in cache directory.');
+        }
 
-      // Share the file
-      await Sharing.shareAsync(fileUri);
+        // Use StorageAccessFramework to save to Downloads
+        const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (permissions.granted) {
+          const base64 = await FileSystem.readAsStringAsync(fileUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
+            permissions.directoryUri,
+            `Total_Report_${dateRange.fromDate}_to_${dateRange.toDate}.pdf`,
+            'application/pdf'
+          );
+          await FileSystem.writeAsStringAsync(fileUri, base64, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          fileUri = `Downloads/Total_Report_${dateRange.fromDate}_to_${dateRange.toDate}.pdf`;
+        } else {
+          throw new Error('Storage access permission denied.');
+        }
+      } else {
+        // iOS: Save to document directory and allow sharing
+        fileUri = `${FileSystem.documentDirectory}Total_Report_${dateRange.fromDate}_to_${dateRange.toDate}.pdf`;
+        await FileSystem.moveAsync({ from: uri, to: fileUri });
+      }
+
+      // Show success message
+      alert(`PDF file saved to: ${fileUri}${Platform.OS === 'ios' ? '\nYou can share it to save to another location.' : ''}`);
+
+      // On iOS, offer to share the file
+      if (Platform.OS === 'ios') {
+        await Sharing.shareAsync(fileUri);
+      }
     } catch (error) {
-      console.error("Error generating report:", error);
+      console.error("Error generating PDF:", error);
+      alert(`Failed to generate PDF file: ${error.message}`);
     } finally {
       setOverlayLoading(false); // Set loading to false
     }
@@ -85,9 +153,6 @@ const ActionMenu = ({ visible, onClose, style, report, setShowViewScreen, dateRa
 
   return (
     <View style={[styles(currentColors).actionMenu, style]}>
-
-
-
       {actionItems.map((item, index) => (
         <TouchableOpacity
           key={index}
@@ -97,7 +162,7 @@ const ActionMenu = ({ visible, onClose, style, report, setShowViewScreen, dateRa
               setShowViewScreen(true); // Show view screen
               fetchReport();
             }
-            if (item.label === 'Print') {
+            if (item.label === 'PDF') {
               handlePrint();
             }
           }}
@@ -110,7 +175,7 @@ const ActionMenu = ({ visible, onClose, style, report, setShowViewScreen, dateRa
   );
 };
 
-const styles = (currentColors)=>{
+const styles = (currentColors) => {
   return StyleSheet.create({
     actionMenu: {
       backgroundColor: 'white',
@@ -126,7 +191,6 @@ const styles = (currentColors)=>{
       elevation: 5,
       minWidth: moderateScale(120),
       zIndex: 1000,
-      // position: 'absolute',
     },
     actionItem: {
       flexDirection: 'row',
@@ -158,7 +222,6 @@ const styles = (currentColors)=>{
       marginRight: moderateScale(5),
     },
   });
-}
-
+};
 
 export { ActionMenu };

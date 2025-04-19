@@ -2,7 +2,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 
-const BASE_URL = "https://pakhims.com/stg_admin-api";
+const BASE_URL = "https://pakhims.com/admin-api";
 
 interface ReportParams {
   userIds: string[];

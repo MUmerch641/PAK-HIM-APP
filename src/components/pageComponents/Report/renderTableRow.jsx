@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { moderateScale } from 'react-native-size-matters';
 import { StyleSheet } from 'react-native';
 import { ActionMenu } from './ActionMenu';
-import { colors } from '../../../utils/color';
 
 const RenderTableRow = ({
   report,
@@ -16,7 +15,7 @@ const RenderTableRow = ({
   setReports,
   setOverlayLoading,
   closeExpandable,
-  currentColors, // Accept currentColors as a prop
+  currentColors,
 }) => {
   const rowRef = useRef(null);
   const windowHeight = Dimensions.get('window').height;
@@ -40,7 +39,17 @@ const RenderTableRow = ({
   const showAbove = selectedRowIndex?.showAbove;
 
   return (
-    <View ref={rowRef} style={styles(currentColors).tableRow}>
+    <View
+      ref={rowRef}
+      style={[
+        styles(currentColors).tableRow,
+        isSelected && showAbove
+          ? { paddingTop: actionMenuHeight + moderateScale(10) } // Add padding at the top if menu is above
+          : isSelected && !showAbove
+          ? { paddingBottom: actionMenuHeight + moderateScale(10) } // Add padding at the bottom if menu is below
+          : {},
+      ]}
+    >
       <View style={styles(currentColors).mrnColumn}>
         <Text style={styles(currentColors).cellText}>{report.No}</Text>
       </View>
@@ -56,7 +65,7 @@ const RenderTableRow = ({
           style={styles(currentColors).actionButton}
         >
           <Ionicons
-            name={isSelected ? "chevron-up" : "chevron-down"}
+            name={isSelected ? 'chevron-up' : 'chevron-down'}
             size={moderateScale(15)}
             color={currentColors.dropdownText}
           />
@@ -67,14 +76,16 @@ const RenderTableRow = ({
             visible={true}
             style={[
               styles(currentColors).actionMenu,
-              showAbove ? styles(currentColors).actionMenuAbove : styles(currentColors).actionMenuBelow,
+              showAbove
+                ? styles(currentColors).actionMenuAbove
+                : styles(currentColors).actionMenuBelow,
             ]}
             report={report}
             setShowViewScreen={setShowViewScreen}
             dateRange={dateRange}
             setReports={setReports}
             closeExpandable={closeExpandable}
-            currentColors={currentColors} // Pass currentColors to ActionMenu
+            currentColors={currentColors}
           />
         )}
       </View>
@@ -82,88 +93,72 @@ const RenderTableRow = ({
   );
 };
 
-const styles = (currentColors) => StyleSheet.create({
-  tableRow: {
-    flexDirection: 'row',
-    paddingHorizontal: moderateScale(15),
-    paddingVertical: moderateScale(10),
-    borderBottomWidth: 1,
-    borderBottomColor: currentColors.dropdownBorder,
-    alignItems: 'center',
-    backgroundColor: currentColors.tableRowBackground,
-  },
-  cellText: {
-    color: currentColors.AppointmentColor,
-    fontSize: moderateScale(12),
-  },
-  tokenColumn: {
-    flex: 1,
-    alignItems: 'flex-start',
-    marginLeft: moderateScale(5),
-  },
-  mrnColumn: {
-    flex: 1,
-    alignItems: 'flex-start',
-  },
-  nameColumn: {
-    flex: 2,
-    alignItems: 'center',
-  },
-  discountColumn: {
-    flex: 1,
-    alignItems: 'center',
-    marginRight: moderateScale(5),
-  },
-  chargesColumn: {
-    flex: 1,
-    alignItems: 'center',
-    marginRight: moderateScale(5),
-  },
-  actionColumn: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  actionButton: {
-    borderColor: currentColors.dropdownBorder,
-    borderWidth: moderateScale(1),
-    borderRadius: moderateScale(50),
-    padding: moderateScale(5),
-    paddingHorizontal: moderateScale(10),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionMenu: {
-    position: 'absolute',
-    right: moderateScale(10),
-    backgroundColor: currentColors.dropdownBackground,
-    borderRadius: moderateScale(8),
-    padding: moderateScale(5),
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
+const styles = (currentColors) =>
+  StyleSheet.create({
+    tableRow: {
+      flexDirection: 'row',
+      paddingHorizontal: moderateScale(15),
+      paddingVertical: moderateScale(10),
+      borderBottomWidth: 1,
+      borderBottomColor: currentColors.dropdownBorder,
+      alignItems: 'center',
+      backgroundColor: currentColors.tableRowBackground,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    minWidth: moderateScale(120),
-    zIndex: 1000,
-  },
-  actionMenuAbove: {
-    bottom: '100%',
-    marginBottom: moderateScale(5),
-  },
-  actionMenuBelow: {
-    top: '100%',
-    marginTop: moderateScale(5),
-  },
-  actionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: moderateScale(8),
-    gap: moderateScale(8),
-  },
- 
-});
+    cellText: {
+      color: currentColors.AppointmentColor,
+      fontSize: moderateScale(12),
+    },
+    tokenColumn: {
+      flex: 1,
+      alignItems: 'flex-start',
+      marginLeft: moderateScale(5),
+    },
+    mrnColumn: {
+      flex: 1,
+      alignItems: 'flex-start',
+    },
+    nameColumn: {
+      flex: 2,
+      alignItems: 'center',
+    },
+    actionColumn: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    actionButton: {
+      borderColor: currentColors.dropdownBorder,
+      borderWidth: moderateScale(1),
+      borderRadius: moderateScale(50),
+      padding: moderateScale(5),
+      paddingHorizontal: moderateScale(10),
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    actionMenu: {
+      position: 'absolute',
+      right: moderateScale(10),
+      backgroundColor: currentColors.dropdownBackground,
+      borderRadius: moderateScale(8),
+      padding: moderateScale(5),
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+      minWidth: moderateScale(120),
+      zIndex: 1000,
+    },
+    actionMenuAbove: {
+      bottom: '100%',
+      marginBottom: moderateScale(5),
+    },
+    actionMenuBelow: {
+      top: '100%',
+      marginTop: moderateScale(5),
+    },
+  });
 
 export { RenderTableRow };

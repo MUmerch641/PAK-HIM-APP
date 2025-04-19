@@ -17,6 +17,6 @@
     "src/screens/Report.jsx",
     "src/Auth/authService.ts",
     "src/screens/Appointment.jsx"
-, "src/components/pageComponents/Appointment/Updation.jsx", "src/components/pageComponents/Appointment/UpdateAppoint.tsx", "src/components/pageComponents/Appointment/TokenGenerator.jsx", "src/components/Reuseable/GetDoctors.jsx"  ],
+, "src/components/pageComponents/Appointment/Updation.jsx", "src/components/pageComponents/Appointment/UpdateAppoint.tsx", "src/components/pageComponents/Appointment/TokenGenerator.jsx", "src/components/Reuseable/GetDoctors.jsx", "src/screens/DeleteHistory.tsx"  ],
   "extends": "expo/tsconfig.base"
 }

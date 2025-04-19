@@ -1,4 +1,3 @@
-// Define color variables
 export const colors = {
   dark: {
     background: '#1A1A2E',
@@ -17,18 +16,18 @@ export const colors = {
     paginationButtonBackground: '#2D2D5A',
     paginationButtonBorder: '#66B2FF',
     noDataText: '#66B2FF',
-    statusbarColor:'#0F0F1F',
-    AppointmentColor:'#E0E0FF',
+    statusbarColor: '#0F0F1F',
+    AppointmentColor: '#E0E0FF',
     backgroundColorExpanded: "#2D2D5A",
-    tabBgColor:'#2D2D5A',
-    actionMenuTextColor:'#E0E0FF',
-    toastSuccessBackground: '#2D2D5A',    // Dark blue-gray
-    toastSuccessBorder: '#66B2FF',        // Light blue
-    toastSuccessText: '#E0E0FF',          // Light purple
-    toastErrorBackground: '#4A1A2E',      // Dark reddish
-    toastErrorBorder: '#FF4444',          // Red
-    toastErrorText: '#E0E0FF'    ,
-    bgColorCards:'#1e1e42',         // Light purple
+    tabBgColor: '#2D2D5A',
+    actionMenuTextColor: '#E0E0FF',
+    toastSuccessBackground: '#2D2D5A',
+    toastSuccessBorder: '#66B2FF',
+    toastSuccessText: '#E0E0FF',
+    toastErrorBackground: '#4A1A2E',
+    toastErrorBorder: '#FF4444',
+    toastErrorText: '#E0E0FF',
+    bgColorCards: '#1e1e42',
   },
   light: {
     background: 'white',
@@ -47,18 +46,17 @@ export const colors = {
     paginationButtonBackground: 'white',
     paginationButtonBorder: '#0066FF',
     noDataText: '#0066FF',
-    statusbarColor:'#0066FF',
-    AppointmentColor:'black',
+    statusbarColor: '#0066FF',
+    AppointmentColor: 'black',
     backgroundColorExpanded: "#F7F7FF",
-    tabBgColor:'#DDE6FB',
-    actionMenuTextColor:'black',
-    toastSuccessBackground: '#F0F7FF',    // Very light blue
-    toastSuccessBorder: '#0066FF',        // Blue
-    toastSuccessText: '#0066FF',          // Blue
-    toastErrorBackground: '#FFF0F0',      // Very light red
-    toastErrorBorder: '#FF4444',          // Red
-    toastErrorText: '#FF4444'   ,
-    
-    bgColorCards:'#F0F7FF',               // Red
+    tabBgColor: '#DDE6FB',
+    actionMenuTextColor: 'black',
+    toastSuccessBackground: '#F0F7FF',
+    toastSuccessBorder: '#0066FF',
+    toastSuccessText: '#0066FF',
+    toastErrorBackground: '#FFF0F0',
+    toastErrorBorder: '#FF4444',
+    toastErrorText: '#FF4444',
+    bgColorCards: '#F0F7FF',
   }
 };

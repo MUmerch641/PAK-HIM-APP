@@ -24,16 +24,11 @@ export interface Appointment {
   status: string;
   time: string;
   optionName: string;
-  search: string
+  search: string;
 }
 
-
-
-
-
-
 export const getAllAppointments = async (
-  { count = 100, pageNo = 1, sort = "accending", checkStatus = "all", doctorIds = [], appointmentDate = "", search = "" }: { count?: number, pageNo?: number, sort?: string, checkStatus?: string, doctorIds?: string[], appointmentDate?: string, search?: string }
+  { count = 100, pageNo = 1, sort = "accending", checkStatus = "all", appointmentDate = "", search = "", doctorId = "", feeStatus = "" }: { count?: number, pageNo?: number, sort?: string, checkStatus?: string, appointmentDate?: string, search?: string, doctorId?: string, feeStatus?: string } = {}
 ): Promise<Appointment[]> => {
   try {
     const token = await getAuthToken();
@@ -41,7 +36,6 @@ export const getAllAppointments = async (
     if (!token) {
       router.replace('/Login');
       throw new Error("No auth token found");
-
     }
 
     const params: any = {};
@@ -49,9 +43,10 @@ export const getAllAppointments = async (
     if (pageNo) params.pageNo = pageNo;
     if (sort) params.sort = sort;
     if (checkStatus) params.checkStatus = checkStatus;
-    if (doctorIds.length > 0) params.doctorIds = doctorIds;
     if (appointmentDate) params.appointmentDate = appointmentDate;
     if (search) params.search = search.trim();
+    if (doctorId) params.doctorId = doctorId;
+    if (feeStatus) params.feeStatus = feeStatus;
 
     const response = await api.get<{ data: Appointment[] }>(
       `/appointments/getAllAppointments`,
@@ -60,7 +55,6 @@ export const getAllAppointments = async (
         params,
       }
     );
-
     if (!response.data || !Array.isArray(response.data.data)) {
       throw new Error("Unexpected response format");
     }
@@ -70,21 +64,9 @@ export const getAllAppointments = async (
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       router.replace('/Login');
     }
-    // if (axios.isAxiosError(error) && error.response?.status === 403) {
-    //   router.replace('/Login');
-
-    // }
-    Toast.show({
-      type: "error",
-      text1: "Error",
-      text2: "Error fetching appointments",
-    });
     throw error; // Instead of returning [], throw an error for better handling
   }
 };
-
-
-
 
 export const deleteAppointment = async (
   id: string,
@@ -96,10 +78,9 @@ export const deleteAppointment = async (
       throw new Error("No auth token found");
     }
 
-    // Corrected: Move deleteReason to request body
     const response = await api.delete(`/appointments/deleteAppointment/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
-      data: { deleteReason }, // Correct way to send body in DELETE request
+      data: { deleteReason },
     });
 
     if (response.status === 200) {
@@ -120,10 +101,6 @@ export const deleteAppointment = async (
     throw error;
   }
 };
-
-
-
-
 
 export const updateAppointment = async (
   id: string,
@@ -151,15 +128,14 @@ export const updateAppointment = async (
       }
     );
 
-
     if (response.data) {
       Toast.show({
         type: "success",
         text1: "Success",
-        text2: "Appointment checked successfully",
+        text2: "Appointment Update successfully",
       });
     } else {
-      throw new Error(`Failed to check appointment: ${response.data.message}`);
+      throw new Error(`Failed to check appointment`);
     }
   } catch (error: any) {
     Toast.show({
@@ -171,11 +147,10 @@ export const updateAppointment = async (
   }
 };
 
-
 export const checkAppointment = async (
   id: string,
   appointmentCheckedStatus: string,
-  commentOnReffered: string, // Fixed typo
+  commentOnReffered: string,
   scheduleNotation: any[]
 ): Promise<void> => {
   try {
@@ -188,7 +163,7 @@ export const checkAppointment = async (
       `/appointments/checkAppointment/${id}`,
       {
         appointmentCheckedStatus,
-        commentOnReffered, // Fixed typo
+        commentOnReffered,
         scheduleNotation,
       },
       {
@@ -263,7 +238,6 @@ export const getAppointmentsByDoctorId = async (
     const token = await getAuthToken();
 
     if (!token) {
-
       throw new Error("No auth token found");
     }
 
@@ -289,6 +263,7 @@ export const getAppointmentsByDoctorId = async (
     throw error;
   }
 };
+
 export const addVitals = async (vitalsData: {
   weight?: string;
   temperature?: string;
@@ -310,7 +285,6 @@ export const addVitals = async (vitalsData: {
       throw new Error("No auth token found");
     }
 
-    // Ensure default values are set properly
     const formattedVitalsData = {
       weight: vitalsData.vitals.weight ?? "N/A",
       temperature: vitalsData.vitals.temperature ?? "N/A",
@@ -325,7 +299,7 @@ export const addVitals = async (vitalsData: {
       isEmergencyIn1Hr: vitalsData.vitals.isEmergencyIn1Hr ?? false,
       message: vitalsData.vitals.message ?? "",
     };
-    // Send API request
+
     const response = await api.post(`/vitals/addVitals`, formattedVitalsData, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -349,9 +323,7 @@ export const addVitals = async (vitalsData: {
   }
 };
 
-
-export const getStatusOptions = async (
-): Promise<Appointment[]> => {
+export const getStatusOptions = async (): Promise<Appointment[]> => {
   try {
     const token = await getAuthToken();
     if (!token) {
@@ -379,8 +351,6 @@ export const getStatusOptions = async (
     throw error;
   }
 };
-
-
 
 export const updateVitalById = async (
   BP: string,
@@ -438,3 +408,109 @@ export const updateVitalById = async (
     throw error;
   }
 };
+
+export interface Service {
+  _id: string;
+  serviceName: string;
+  fee: number;
+  hospitalChargesInPercentage: number;
+  extra?: Record<string, any>;
+}
+
+export interface DoctorDetails {
+  _id: string;
+  specialization: string;
+  photoUrl: string;
+  weeklySchedule: Array<{
+    day: string;
+    timingScheedules: Array<{
+      timeFrom: string;
+      timeTo: string;
+    }>;
+  }>;
+  doctorId: string;
+  projectId: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted: boolean;
+  isActive: boolean;
+  slotIntervalTime?: number;
+}
+
+export interface Doctor {
+  _id: string;
+  fullName: string;
+  dob: string;
+  gender: string;
+  phonNumber: string;
+  nationality: string;
+  city: string;
+  cnic: string;
+  email: string;
+  userCategoryId: string;
+  canLogin: boolean;
+  haveOpd: boolean;
+  userType: string[];
+  projectId: string;
+  userId: string;
+  extra: Record<string, any>;
+  assingDoctors: string[];
+  assingReceiptionest: string[];
+  jobType: string;
+  department: string;
+  specialization?: string;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted: boolean;
+  isActive: boolean;
+  roles: number[];
+  doctorDetails: DoctorDetails;
+  services: Service[];
+}
+
+export interface DoctorsResponse {
+  isSuccess: boolean;
+  data: Doctor[];
+  message: string;
+  totalCount: number;
+}
+
+export const getAssignedDoctors = async (): Promise<Doctor[]> => {
+  try {
+    const token = await getAuthToken();
+
+    if (!token) {
+      router.replace('/Login');
+      throw new Error("No auth token found");
+    }
+
+    const response = await api.get<DoctorsResponse>(
+      `/users/getAssignedDoctores`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (!response.data || !response.data.isSuccess || !Array.isArray(response.data.data)) {
+      throw new Error("Unexpected response format");
+    }
+
+    return response.data.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      router.replace('/Login');
+    }
+
+    Toast.show({
+      type: "error",
+      text1: "Error",
+      text2: "Error fetching assigned doctors",
+    });
+
+    throw error;
+  }
+};
+
+
+

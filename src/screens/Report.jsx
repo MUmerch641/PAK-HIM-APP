@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,11 +9,11 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Dimensions } from 'react-native';
 import { verticalScale, moderateScale } from 'react-native-size-matters';
-import Drawer from '../components/pageComponents/Appointment/Drawer';
 import PatientRegistrationForm from './PatientRegistration';
 import CircularProgressComponent from '../components/pageComponents/Appointment/Circular';
 import { renderTableHeader } from '../components/pageComponents/Report/renderTableHeader';
@@ -21,30 +21,26 @@ import { RenderTableRow } from '../components/pageComponents/Report/renderTableR
 import { getHospitalReport } from '../ApiHandler/Report';
 import FinancialReport from '../components/pageComponents/Report/View';
 import DateRangePicker from '../components/pageComponents/Report/DateRangePicker';
-import { Picker } from '@react-native-picker/picker';
-import { getDoctors } from '../ApiHandler/Patient';
+import { getAssignedDoctors } from '../ApiHandler/Appointment';
 import ExpandableDetails from '../components/Reuseable/Expandable';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '../utils/ThemeContext';
 import ThemeToggleButton from '../components/Reuseable/ThemeToggleButton';
+import { useFocusEffect } from '@react-navigation/native';
+import socketService from '../socket';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
 const Report = () => {
-  // Move useColorScheme to the top level
-
   const { currentColors } = useTheme();
-  // Set the initial date range to the default values used in DateRangePicker
   const defaultDateRange = {
-    fromDate: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0],
+    fromDate: new Date(new Date().setDate(new Date().getDate())).toISOString().split('T')[0],
     toDate: new Date().toISOString().split('T')[0]
   };
-  const [loading, setOverlayLoading] = useState(false); // Add loading state
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('Active');
-  const [selectedDate, setSelectedDate] = useState('12/12/2024');
+  const [loading, setOverlayLoading] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState('');
-  const [selectedRowIndex, setSelectedRowIndex] = useState(null); // Update state to handle new object structure
+  const [selectedRowIndex, setSelectedRowIndex] = useState(null);
   const [showPatientScreen, setShowPatientScreen] = useState(false);
   const [showViewScreen, setShowViewScreen] = useState(false);
   const [report, setReport] = useState([]);
@@ -59,12 +55,45 @@ const Report = () => {
   const [noReportFound, setNoReportFound] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [projectId, setProjectId] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState(false);
 
-  const [Reports, setReports] = useState([]); // Initialize as an empty array
+  const [Reports, setReports] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [services, setServices] = useState([]);
   const [isDoctorDropdownOpen, setIsDoctorDropdownOpen] = useState(false);
   const [expandedRowIndex, setExpandedRowIndex] = useState(null);
+  const [isCurrentUserDoctor, setIsCurrentUserDoctor] = useState(false);
+
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const userDataString = await AsyncStorage.getItem('userData');
+        if (userDataString) {
+          const userData = JSON.parse(userDataString);
+          setProjectId(userData.projectId || null);
+          if (userData.fullName) {
+            window.currentUserFullName = userData.fullName;
+          }
+        }
+      } catch (error) {
+        console.error("Error loading user data:", error);
+      }
+    };
+    loadUserData();
+  }, []);
+
+  useEffect(() => {
+    setConnectionStatus(socketService.isConnected());
+    const handleConnect = () => setConnectionStatus(true);
+    const handleDisconnect = () => setConnectionStatus(false);
+    socketService.on('connect', handleConnect);
+    socketService.on('disconnect', handleDisconnect);
+    return () => {
+      socketService.off('connect', handleConnect);
+      socketService.off('disconnect', handleDisconnect);
+    };
+  }, []);
 
   const fetchReport = async (doctorId = '') => {
     setIsLoading(true);
@@ -100,35 +129,71 @@ const Report = () => {
   };
 
   useEffect(() => {
+    if (!projectId) return;
+    const unsubscribe = socketService.listenToProjectEvents((data) => {
+      if (data.module === 'appointments' || 
+         (data.module === 'employee' && 
+          (data.operation === 'update' || data.operation === 'delete'))) {
+        fetchReport(selectedDoctor);
+      }
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [projectId, selectedDoctor, dateRange]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchReport(selectedDoctor);
+    }, [selectedDoctor, dateRange])
+  );
+
+  useEffect(() => {
     fetchReport(selectedDoctor);
   }, [dateRange, selectedDoctor]);
-  const { themeMode } = useTheme(); // Get the current theme mode
+
+  const { themeMode } = useTheme();
 
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
-        const response = await getDoctors({});
-        const doctorsList = response.data;
+        const response = await getAssignedDoctors();
+        const doctorsList = response.map(doctor => ({
+          _id: doctor._id,
+          fullName: doctor.fullName,
+          services: doctor.services || []
+        }));
         setDoctors(doctorsList);
-        if (doctorsList.length > 0) {
-          setServices(doctorsList[0].services);
+        const currentUserFullName = window.currentUserFullName;
+        if (currentUserFullName) {
+          const matchingDoctor = doctorsList.find(
+            doctor => doctor.fullName.toLowerCase() === currentUserFullName.toLowerCase()
+          );
+          if (matchingDoctor) {
+            setSelectedDoctor(matchingDoctor._id);
+            setServices(matchingDoctor.services || []);
+            setIsCurrentUserDoctor(true);
+          } else if (doctorsList.length > 0) {
+            setServices(doctorsList[0].services || []);
+          }
+        } else if (doctorsList.length > 0) {
+          setServices(doctorsList[0].services || []);
         }
       } catch (error) {
         console.error("Error fetching doctors:", error);
       }
     };
-
     fetchDoctors();
   }, []);
 
   const handleDoctorChange = (doctorId) => {
+    if (isCurrentUserDoctor) return;
     setIsDoctorDropdownOpen(false);
     if (doctorId === '') {
       setSelectedDoctor('');
       setServices([]);
       return;
     }
-
     const selectedDoctor = doctors.find((doctor) => doctor._id === doctorId);
     if (selectedDoctor) {
       setSelectedDoctor(selectedDoctor._id);
@@ -151,8 +216,20 @@ const Report = () => {
     }
   };
 
+  const closeDropdown = () => {
+    if (isDoctorDropdownOpen) {
+      setIsDoctorDropdownOpen(false);
+    }
+  };
+
   return (
     <SafeAreaView style={[styles(currentColors).container, { position: 'relative' }]}>
+      {!connectionStatus && (
+        <View style={styles(currentColors).connectionStatusBar}>
+          <Ionicons name="cloud-offline-outline" size={moderateScale(16)} color="white" />
+          <Text style={styles(currentColors).connectionStatusText}>Offline - Updates may be delayed</Text>
+        </View>
+      )}
       {loading && (
         <View style={styles(currentColors).loadingOverlay}>
           <ActivityIndicator size="large" color="#fff" />
@@ -166,47 +243,57 @@ const Report = () => {
       ) : (
         <>
           <View style={styles(currentColors).header}>
-            <TouchableOpacity onPress={() => logout()}
-            >
-              <Ionicons name="log-in-outline" size={moderateScale(24)} color="white" />
+            <TouchableOpacity onPress={() => logout()}>
+              <Ionicons name="log-out-outline" size={24} color="white" />
             </TouchableOpacity>
             <Text style={styles(currentColors).headerTitle}>Report</Text>
             <ThemeToggleButton themeMode={themeMode} />
           </View>
 
-
           <View style={styles(currentColors).searchContainer}>
             <View style={styles(currentColors).filterButton}>
               <TouchableOpacity
-                style={styles(currentColors).dropdownButton}
-                onPress={() => setIsDoctorDropdownOpen(!isDoctorDropdownOpen)}
+                style={[
+                  styles(currentColors).dropdownButton,
+                  isCurrentUserDoctor && styles(currentColors).disabledDropdown
+                ]}
+                onPress={() => !isCurrentUserDoctor && setIsDoctorDropdownOpen(!isDoctorDropdownOpen)}
+                disabled={isCurrentUserDoctor}
               >
                 <Text style={styles(currentColors).dropdownButtonText}>
-                  {selectedDoctor ? doctors.find(doc => doc._id === selectedDoctor)?.fullName : 'Select Doctor'}
+                  {selectedDoctor ? doctors.find(doc => doc._id === selectedDoctor)?.fullName : 'All Doctor'}
                 </Text>
-                <Ionicons
-                  name={isDoctorDropdownOpen ? "chevron-up" : "chevron-down"}
-                  size={moderateScale(20)}
-                  color={currentColors.dropdownText}
-                />
+                {!isCurrentUserDoctor && (
+                  <Ionicons
+                    name={isDoctorDropdownOpen ? "chevron-up" : "chevron-down"}
+                    size={moderateScale(20)}
+                    color={currentColors.dropdownText}
+                  />
+                )}
               </TouchableOpacity>
-              {isDoctorDropdownOpen && (
+              {isDoctorDropdownOpen && !isCurrentUserDoctor && (
                 <View style={styles(currentColors).dropdown}>
-                  <TouchableOpacity
-                    style={styles(currentColors).dropdownItem}
-                    onPress={() => handleDoctorChange('')}
+                  <ScrollView 
+                    style={styles(currentColors).dropdownScroll}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled={true}
                   >
-                    <Text style={styles(currentColors).dropdownItemText}>Select Doctor</Text>
-                  </TouchableOpacity>
-                  {doctors.map((doctor) => (
                     <TouchableOpacity
-                      key={doctor._id}
                       style={styles(currentColors).dropdownItem}
-                      onPress={() => handleDoctorChange(doctor._id)}
+                      onPress={() => handleDoctorChange('')}
                     >
-                      <Text style={styles(currentColors).dropdownItemText}>{doctor.fullName}</Text>
+                      <Text style={styles(currentColors).dropdownItemText}>All Doctor</Text>
                     </TouchableOpacity>
-                  ))}
+                    {doctors.map((doctor) => (
+                      <TouchableOpacity
+                        key={doctor._id}
+                        style={styles(currentColors).dropdownItem}
+                        onPress={() => handleDoctorChange(doctor._id)}
+                      >
+                        <Text style={styles(currentColors).dropdownItemText}>{doctor.fullName}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
               )}
             </View>
@@ -214,7 +301,7 @@ const Report = () => {
               onDateRangeChange={(range) => {
                 setDateRange(range);
               }}
-              currentColors={currentColors} // Pass currentColors
+              currentColors={currentColors}
             />
           </View>
 
@@ -232,7 +319,7 @@ const Report = () => {
             </View>
           ) : (
             <>
-              {renderTableHeader(currentColors)} {/* Pass currentColors */}
+              {renderTableHeader(currentColors)}
               <FlatList
                 data={report}
                 keyExtractor={(item, index) => index.toString()}
@@ -268,18 +355,20 @@ const Report = () => {
               />
             </>
           )}
-          
+
+          {isDoctorDropdownOpen && (
+            <TouchableWithoutFeedback onPress={closeDropdown}>
+              <View style={styles(currentColors).dropdownOverlay} />
+            </TouchableWithoutFeedback>
+          )}
         </>
       )}
       <Toast />
-
     </SafeAreaView>
   );
 };
 
-
 export default Report;
-
 
 const styles = (currentColors) => {
   return StyleSheet.create({
@@ -292,7 +381,7 @@ const styles = (currentColors) => {
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       justifyContent: 'center',
       alignItems: 'center',
-      zIndex: 1000, // Ensure this is higher than other components
+      zIndex: 1000,
     },
     loadingText: {
       color: '#fff',
@@ -331,38 +420,7 @@ const styles = (currentColors) => {
       borderRadius: moderateScale(10),
       borderWidth: moderateScale(1),
       borderColor: currentColors.dropdownBorder,
-
     },
-    picker: {
-      flex: 1,
-      color: '#0066FF',
-    },
-    // searchBar: {
-    //   flex: 1,
-    //   flexDirection: 'row',
-    //   alignItems: 'center',
-    //   backgroundColor: 'white',
-    //   borderRadius: moderateScale(12),
-    //   paddingHorizontal: moderateScale(8),
-    //   backgroundColor: 'transparent',
-    //   borderRadius: moderateScale(8),
-    //   borderColor: '#ffffff8d',
-    //   borderWidth: moderateScale(1),
-    // },
-    // searchInput: {
-    //   flex: 1,
-    //   paddingVertical: verticalScale(8),
-    //   marginLeft: moderateScale(10),
-    //   fontSize: moderateScale(14),
-    // },
-    // addButton: {
-    //   backgroundColor: '#4D94FF',
-    //   width: moderateScale(40),
-    //   height: moderateScale(40),
-    //   borderRadius: moderateScale(8),
-    //   justifyContent: 'center',
-    //   alignItems: 'center',
-    // },
     filterContainer: {
       backgroundColor: 'white',
       flexDirection: 'row',
@@ -523,11 +581,6 @@ const styles = (currentColors) => {
       borderBottomWidth: 1,
       borderBottomColor: '#f0f0f0',
     },
-    activeDrawerItem: {
-      backgroundColor: '#f0f7ff',
-      borderLeftWidth: 4,
-      borderLeftColor: '#0066FF',
-    },
     drawerItemIcon: {
       fontSize: moderateScale(20),
       marginRight: moderateScale(15),
@@ -536,12 +589,6 @@ const styles = (currentColors) => {
     drawerItemText: {
       fontSize: moderateScale(16),
       color: '#333',
-    },
-    activeDrawerItemText: {
-      color: '#0066FF',
-      fontWeight: '600',
-      marginRight: moderateScale(15),
-      marginLeft: moderateScale(5),
     },
     patientScreen: {
       flex: 1,
@@ -618,6 +665,10 @@ const styles = (currentColors) => {
       shadowRadius: 3.84,
       elevation: 5,
       zIndex: 1000,
+      maxHeight: verticalScale(250),
+    },
+    dropdownScroll: {
+      maxHeight: verticalScale(250),
     },
     dropdownItem: {
       padding: moderateScale(12),
@@ -627,6 +678,38 @@ const styles = (currentColors) => {
     dropdownItemText: {
       fontSize: moderateScale(14),
       color: currentColors.dropdownText,
+    },
+    dropdownOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'transparent',
+      zIndex: 999,
+    },
+    connectionStatusBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: verticalScale(5),
+      marginHorizontal: moderateScale(15),
+      marginTop: verticalScale(5),
+      marginBottom: 0,
+      borderRadius: moderateScale(4),
+      backgroundColor: '#e53935',
+      zIndex: 10,
+    },
+    connectionStatusText: {
+      color: 'white',
+      fontSize: moderateScale(12),
+      fontWeight: '500',
+      marginLeft: moderateScale(5),
+    },
+    disabledDropdown: {
+      opacity: 0.8,
+      borderColor: currentColors.dropdownBorder,
+      backgroundColor: 'rgba(0,0,0,0.05)',
     },
   });
 }

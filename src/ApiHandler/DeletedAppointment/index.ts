@@ -2,7 +2,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 
-const BASE_URL = "https://pakhims.com/stg_user-api";
+const BASE_URL = "https://pakhims.com/user-api";
 
 interface DeletedAppointmentsParams {
   count: number;
@@ -56,9 +56,8 @@ export const getAllDeletedAppointments = async (
       params,
     });
 
-    return response.data.data;
+    return response.data;
   } catch (error: any) {
-    console.error("Error fetching deleted appointments:", error.response?.data || error.message);
     throw error;
   }
 };

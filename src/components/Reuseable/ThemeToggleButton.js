@@ -124,7 +124,7 @@ const ThemeToggleButton = ({ themeMode }) => {
         )}
       </TouchableOpacity>
 
-      {/* System Mode Button */}
+      {/* System Mode Button */}   
       <TouchableOpacity
         onPress={() => handlePress('system')}
         style={styles.toggleButton}

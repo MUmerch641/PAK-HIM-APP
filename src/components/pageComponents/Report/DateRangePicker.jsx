@@ -1,20 +1,19 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Modal, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { moderateScale, verticalScale } from 'react-native-size-matters';
 
 const DateRangePicker = ({ onDateRangeChange, currentColors }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedOption, setSelectedOption] = useState('Last 7 Days');
+  const [selectedOption, setSelectedOption] = useState('Today');
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [datePickerMode, setDatePickerMode] = useState('fromDate');
   const [dateRange, setDateRange] = useState({
-    fromDate: '',
-    toDate: ''
+    fromDate: new Date(),
+    toDate: new Date()
   });
-  const [customDates, setCustomDates] = useState({
-    fromDate: '',
-    toDate: ''
-  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const options = [
     'Today',
@@ -25,34 +24,47 @@ const DateRangePicker = ({ onDateRangeChange, currentColors }) => {
     'Custom'
   ];
 
+  // Initialize with Today's date range
+  useEffect(() => {
+    const todayRange = calculateDateRange('Today');
+    setDateRange(todayRange);
+    onDateRangeChange({
+      fromDate: todayRange.fromDate.toISOString().split('T')[0],
+      toDate: todayRange.toDate.toISOString().split('T')[0]
+    });
+  }, []);
+
   const calculateDateRange = (option) => {
     const today = new Date();
     let fromDate = new Date();
-    let toDate = today;
+    let toDate = new Date(today);
 
     switch (option) {
       case 'Today':
-        fromDate = today;
+        fromDate = new Date(today);
         break;
       case 'Last 7 Days':
-        fromDate.setDate(today.getDate() - 7);
+        fromDate = new Date(today);
+        fromDate.setDate(today.getDate() - 6);
         break;
       case 'This Month':
         fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
         break;
       case 'Last 1 Month':
+        fromDate = new Date(today);
         fromDate.setMonth(today.getMonth() - 1);
         break;
       case 'Last 3 Months':
+        fromDate = new Date(today);
         fromDate.setMonth(today.getMonth() - 3);
         break;
       default:
-        return;
+        return { fromDate, toDate };
     }
 
     return {
-      fromDate: fromDate.toISOString().split('T')[0],
-      toDate: toDate.toISOString().split('T')[0]
+      fromDate,
+      toDate
     };
   };
 
@@ -67,17 +79,44 @@ const DateRangePicker = ({ onDateRangeChange, currentColors }) => {
 
     const newDateRange = calculateDateRange(option);
     setDateRange(newDateRange);
-    onDateRangeChange(newDateRange);
+    onDateRangeChange({
+      fromDate: newDateRange.fromDate.toISOString().split('T')[0],
+      toDate: newDateRange.toDate.toISOString().split('T')[0]
+    });
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    const currentDate = selectedDate || dateRange[datePickerMode];
+    setShowDatePicker(false);
+
+    setDateRange(prev => ({
+      ...prev,
+      [datePickerMode]: currentDate
+    }));
   };
 
   const handleCustomDateSubmit = () => {
-    setDateRange(customDates);
-    onDateRangeChange(customDates);
+    onDateRangeChange({
+      fromDate: dateRange.fromDate.toISOString().split('T')[0],
+      toDate: dateRange.toDate.toISOString().split('T')[0]
+    });
     setShowCustomPicker(false);
   };
 
+  const openDatePicker = (mode) => {
+    setDatePickerMode(mode);
+    setShowDatePicker(true);
+  };
+
+  // Function to close dropdown when clicking outside
+  const closeDropdown = () => {
+    if (isDropdownOpen) {
+      setIsDropdownOpen(false);
+    }
+  };
+
   return (
-    <View>
+    <View style={{ position: 'relative', width: '50%', zIndex: 1000 }}>
       <TouchableOpacity 
         style={styles(currentColors).dropdownButton} 
         onPress={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -87,17 +126,24 @@ const DateRangePicker = ({ onDateRangeChange, currentColors }) => {
       </TouchableOpacity>
 
       {isDropdownOpen && (
-        <View style={styles(currentColors).dropdown}>
-          {options.map((option) => (
-            <TouchableOpacity
-              key={option}
-              style={styles(currentColors).dropdownItem}
-              onPress={() => handleOptionSelect(option)}
-            >
-              <Text style={styles(currentColors).dropdownItemText}>{option}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <>
+          <View style={styles(currentColors).dropdown}>
+            {options.map((option) => (
+              <TouchableOpacity
+                key={option}
+                style={styles(currentColors).dropdownItem}
+                onPress={() => handleOptionSelect(option)}
+              >
+                <Text style={styles(currentColors).dropdownItemText}>{option}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          
+          {/* Add overlay to detect outside clicks when dropdown is open */}
+          <TouchableWithoutFeedback onPress={closeDropdown}>
+            <View style={styles(currentColors).dropdownOverlay} />
+          </TouchableWithoutFeedback>
+        </>
       )}
 
       <Modal
@@ -110,24 +156,33 @@ const DateRangePicker = ({ onDateRangeChange, currentColors }) => {
             <Text style={styles(currentColors).modalTitle}>Select Custom Date Range</Text>
             
             <View style={styles(currentColors).dateInputContainer}>
-              <Text>From Date:</Text>
-              <TextInput
-                style={styles(currentColors).dateInput}
-                value={customDates.fromDate}
-                onChangeText={(text) => setCustomDates(prev => ({ ...prev, fromDate: text }))}
-                placeholder="YYYY-MM-DD"
-              />
+              <TouchableOpacity 
+                style={styles(currentColors).dateButton}
+                onPress={() => openDatePicker('fromDate')}
+              >
+                <Text>From Date: {dateRange.fromDate.toLocaleDateString()}</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles(currentColors).dateInputContainer}>
-              <Text>To Date:</Text>
-              <TextInput
-                style={styles(currentColors).dateInput}
-                value={customDates.toDate}
-                onChangeText={(text) => setCustomDates(prev => ({ ...prev, toDate: text }))}
-                placeholder="YYYY-MM-DD"
-              />
+              <TouchableOpacity 
+                style={styles(currentColors).dateButton}
+                onPress={() => openDatePicker('toDate')}
+              >
+                <Text>To Date: {dateRange.toDate.toLocaleDateString()}</Text>
+              </TouchableOpacity>
             </View>
+
+            {showDatePicker && (
+              <DateTimePicker
+                testID="dateTimePicker"
+                value={dateRange[datePickerMode]}
+                mode="date"
+                is24Hour={true}
+                display="default"
+                onChange={handleDateChange}
+              />
+            )}
 
             <View style={styles(currentColors).modalButtons}>
               <TouchableOpacity 
@@ -153,7 +208,7 @@ const DateRangePicker = ({ onDateRangeChange, currentColors }) => {
 const styles = (currentColors) => ({
   dropdownButton: {
     flexDirection: 'row',
-    width: '70%',
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: moderateScale(6),
@@ -211,11 +266,11 @@ const styles = (currentColors) => ({
   dateInputContainer: {
     marginBottom: verticalScale(15),
   },
-  dateInput: {
+  dateButton: {
     borderWidth: 1,
     borderColor: currentColors.dropdownBorder,
     borderRadius: moderateScale(8),
-    padding: moderateScale(8),
+    padding: moderateScale(10),
     marginTop: verticalScale(5),
   },
   modalButtons: {
@@ -238,6 +293,18 @@ const styles = (currentColors) => ({
     color: 'white',
     textAlign: 'center',
     fontSize: moderateScale(14),
+  },
+  // Add overlay style for detecting outside clicks
+  dropdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '200%',  // Make overlay wider to cover whole screen
+    height: '200%', // Make overlay taller to cover whole screen
+    backgroundColor: 'transparent',
+    zIndex: 999, // Below the dropdown (1000) but above other elements
   },
 });
 

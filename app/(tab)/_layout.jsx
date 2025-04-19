@@ -1,7 +1,5 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useColorScheme } from 'react-native';
-import { colors } from '../../src/utils/color';
 import { useTheme } from '@/src/utils/ThemeContext';
 
 export default function TabLayout() {
@@ -15,6 +13,7 @@ export default function TabLayout() {
             Appointment: focused ? 'calendar' : 'calendar-outline',
             Report: focused ? 'stats-chart' : 'stats-chart-outline',
             DeletedHistory: focused ? 'trash' : 'trash-outline',
+            User: focused ? 'person' : 'person-outline',
           };
 
           return <Ionicons name={icons[route.name]} size={size} color={color} />;
@@ -51,6 +50,13 @@ export default function TabLayout() {
           title: "Delete History",
         }}
       />
+      <Tabs.Screen
+        name="User"
+        options={{
+          title: "User",
+        }}
+      />
+
     </Tabs>
   );
 }

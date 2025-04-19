@@ -1,7 +1,8 @@
 // Scale.ts
 import { Dimensions } from 'react-native';
-const { width, height } = Dimensions.get('window');
 
+// Scale utilities
+const { width, height } = Dimensions.get('window');
 const guidelineBaseWidth = 350;
 const guidelineBaseHeight = 680;
 
@@ -40,6 +41,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import Input from '../components/pageComponents/LoginComponents/Input';
 import { loginUser } from '../Auth/authService';
 import { useTheme } from '../utils/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface LoginScreenProps {
   onLogin?: (data: LoginFormData) => void;
@@ -49,11 +51,13 @@ interface LoginScreenProps {
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, style }) => {
   const { currentColors } = useTheme();
+
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
     rememberMe: false,
   });
+
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [errors, setErrors] = useState({
     email: false,
@@ -61,25 +65,48 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, style }) => {
   });
   const [showErrors, setShowErrors] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  useEffect(() => {
-    if (params.message) {
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: params.message as string,
-      });
-    }
-  }, [params]);
+  // useEffect(() => {
+  //   if (params.message) {
+  //     Toast.show({
+  //       type: 'success',
+  //       text1: 'Success',
+  //       text2: params.message as string,
+  //     });
+  //   }
 
- 
+  //   // Check for remembered email
+  //   const checkRememberedEmail = async () => {
+  //     try {
+  //       const rememberedEmail = await AsyncStorage.getItem('rememberedEmail');
+  //       const isRemembered = await AsyncStorage.getItem('rememberMe');
+
+  //       if (rememberedEmail && isRemembered === 'true') {
+  //         setFormData(prev => ({
+  //           ...prev,
+  //           email: rememberedEmail,
+  //           rememberMe: true,
+  //         }));
+  //       }
+  //     } catch (error) {
+  //       console.error('Error retrieving remembered email:', error);
+  //     }
+  //   };
+
+  //   checkRememberedEmail();
+  // }, [params]);
 
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-      const userData = await loginUser(formData.email, formData.password);
+      const userData = await loginUser(
+        formData.email.trim(),
+        formData.password.trim(),
+        formData.rememberMe // Pass the rememberMe value
+      );
 
       if (!userData) {
         Toast.show({
@@ -109,6 +136,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, style }) => {
 
   const handleInputChange = (field: keyof LoginFormData) => (text: string) => {
     setFormData(prev => ({ ...prev, [field]: text }));
+
     if (showErrors) {
       setErrors(prev => ({ ...prev, [field]: !text }));
     }
@@ -118,7 +146,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, style }) => {
     return (
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={[styles(currentColors).container, style]}>
+        style={[styles(currentColors).container, style]}
+      >
         <ScrollView contentContainerStyle={styles(currentColors).scrollContainer}>
           <ResetPasswordScreen
             onResetPassword={handleResetPassword}
@@ -132,7 +161,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, style }) => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={[styles(currentColors).container, style]}>
+      style={[styles(currentColors).container, style]}
+    >
       <ScrollView contentContainerStyle={styles(currentColors).scrollContainer}>
         <View style={styles(currentColors).imageContainer}>
           <Image
@@ -140,10 +170,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, style }) => {
             style={styles(currentColors).topImage}
           />
         </View>
-        <Text style={styles(currentColors).welcomeText}>Hello Admin!</Text>
+
         <View style={styles(currentColors).formContainer}>
           <Text style={styles(currentColors).loginText}>Login Account</Text>
           <Text style={styles(currentColors).subText}>Enter email & password to login HMS</Text>
+
           <Input
             label="Email"
             value={formData.email}
@@ -155,6 +186,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, style }) => {
             showError={showErrors}
             currentColors={currentColors}
           />
+
           <Input
             label="Password"
             value={formData.password}
@@ -169,20 +201,29 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, style }) => {
           <View style={styles(currentColors).optionsContainer}>
             <TouchableOpacity
               style={styles(currentColors).rememberContainer}
-              onPress={() => setFormData({ ...formData, rememberMe: !formData.rememberMe })}>
-              <View style={[styles(currentColors).checkbox, { backgroundColor: formData.rememberMe ? currentColors.activeTabBackground : 'transparent' }]}>
+              onPress={() => setFormData({ ...formData, rememberMe: !formData.rememberMe })}
+            >
+              <View
+                style={[
+                  styles(currentColors).checkbox,
+                  { backgroundColor: formData.rememberMe ? currentColors.activeTabBackground : 'transparent' },
+                ]}
+              >
                 {formData.rememberMe && <Text style={styles(currentColors).checked}>✓</Text>}
               </View>
               <Text style={styles(currentColors).rememberText}>Remember Me</Text>
             </TouchableOpacity>
+
             <TouchableOpacity onPress={() => setShowResetPassword(true)}>
               <Text style={styles(currentColors).forgotText}>Forgot Password?</Text>
             </TouchableOpacity>
           </View>
+
           <TouchableOpacity
             style={[styles(currentColors).loginButton, isLoading && { opacity: 0.8 }]}
             onPress={handleLogin}
-            disabled={isLoading}>
+            disabled={isLoading}
+          >
             {isLoading ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
@@ -190,6 +231,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, style }) => {
             )}
           </TouchableOpacity>
         </View>
+
         <Toast />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -228,15 +270,6 @@ const styles = (currentColors: any) => StyleSheet.create({
     paddingLeft: scale(30),
     paddingRight: scale(30),
     paddingTop: verticalScale(20),
-  },
-  welcomeText: {
-    fontWeight: 'bold',
-    padding: moderateScale(12),
-    marginTop: verticalScale(13),
-    textAlign: 'center',
-    fontSize: moderateScale(16),
-    color: currentColors.dropdownText,
-    backgroundColor: currentColors.background === '#1A1A2E' ? 'rgba(45, 45, 90, 0.3)' : 'rgba(217, 217, 217, 0.15)',
   },
   loginText: {
     textAlign: 'center',
