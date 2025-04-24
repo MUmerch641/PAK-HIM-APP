@@ -21,19 +21,30 @@ const FinancialReport = ({ onClose, selectedDate, Reports }) => {
   const [expandedRowIndex, setExpandedRowIndex] = useState(null); // Add state for expandable rows
   const [filteredReports, setFilteredReports] = useState([]);
 
+  // Get the actual array of reports from the Reports object
+  const reportData = Reports?.finuncialReport || [];
+
   // Animation refs
   const scrollY = useRef(new Animated.Value(0)).current;
   const listOpacity = useRef(new Animated.Value(0)).current;
   const listTranslateY = useRef(new Animated.Value(50)).current;
   const itemAnimatedValues = useRef([]);
 
+  // Track if we've already initialized the animations once
+  const animationInitialized = useRef(false);
+
+  // Initialize filteredReports with all Reports on component mount only
+  useEffect(() => {
+    setFilteredReports(reportData);
+  }, [JSON.stringify(reportData)]); // Use JSON.stringify to prevent excessive rerenders
+
   // Filter reports when searchText changes
   useEffect(() => {
     if (!searchText.trim()) {
-      setFilteredReports(Reports);
+      setFilteredReports(reportData);
     } else {
       const searchQuery = searchText.toLowerCase().trim();
-      const filtered = Reports.filter(report => 
+      const filtered = reportData.filter(report => 
         (report.name && report.name.toLowerCase().includes(searchQuery)) ||
         (report.createdBy && report.createdBy.toLowerCase().includes(searchQuery)) ||
         (report.discountentName && report.discountentName.toLowerCase().includes(searchQuery)) ||
@@ -42,52 +53,58 @@ const FinancialReport = ({ onClose, selectedDate, Reports }) => {
       );
       setFilteredReports(filtered);
     }
-  }, [searchText, Reports]);
+  }, [searchText, JSON.stringify(reportData)]); // Use JSON.stringify to prevent excessive rerenders
 
   // Create animated values for each list item when filteredReports change
+  // but only run animations when necessary
   useEffect(() => {
+    if (filteredReports.length === 0) return;
+
+    // Initialize animated values for each item only once
     itemAnimatedValues.current = filteredReports.map((_, i) => ({
       opacity: new Animated.Value(0),
       translateY: new Animated.Value(20)
     }));
-    
-    // Animate list appearance when data loads
-    Animated.parallel([
-      Animated.timing(listOpacity, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true
-      }),
-      Animated.timing(listTranslateY, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true
-      })
-    ]).start();
-    
-    // Staggered animation for each item
-    filteredReports.forEach((_, i) => {
+
+    // Only run the full animations on the first load
+    if (!animationInitialized.current) {
+      // Animate list appearance when data first loads
       Animated.parallel([
-        Animated.timing(itemAnimatedValues.current[i].opacity, {
+        Animated.timing(listOpacity, {
           toValue: 1,
           duration: 500,
-          delay: i * 100,
           useNativeDriver: true
         }),
-        Animated.timing(itemAnimatedValues.current[i].translateY, {
+        Animated.timing(listTranslateY, {
           toValue: 0,
-          duration: 500,
-          delay: i * 100,
+          duration: 600,
           useNativeDriver: true
         })
       ]).start();
-    });
-  }, [filteredReports]);
 
-  // Initialize filteredReports with all Reports on component mount
-  useEffect(() => {
-    setFilteredReports(Reports);
-  }, [Reports]);
+      animationInitialized.current = true;
+    }
+
+    // Staggered animation for each item
+    filteredReports.forEach((_, i) => {
+      if (i < itemAnimatedValues.current.length) {
+        Animated.parallel([
+          Animated.timing(itemAnimatedValues.current[i].opacity, {
+            toValue: 1,
+            duration: 500,
+            delay: i * 50, // Reduced delay to make animations faster
+            useNativeDriver: true
+          }),
+          Animated.timing(itemAnimatedValues.current[i].translateY, {
+            toValue: 0,
+            duration: 500,
+            delay: i * 50, // Reduced delay to make animations faster
+            useNativeDriver: true
+          })
+        ]).start();
+      }
+    });
+  }, [JSON.stringify(filteredReports)]); // Use JSON.stringify to prevent excessive rerenders
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -234,7 +251,7 @@ const FinancialReport = ({ onClose, selectedDate, Reports }) => {
                 <th>Service Charge</th>
                 <th>Dr. Charge</th>
               </tr>
-              ${filteredReports.map(report => `
+              ${Array.isArray(filteredReports) ? filteredReports.map(report => `
                 <tr>
                   <td>${report.name || '-'}</td>
                   <td>${report.discount || '-'}</td>
@@ -243,7 +260,7 @@ const FinancialReport = ({ onClose, selectedDate, Reports }) => {
                   <td>${report.servicesCharges || '-'}</td>
                   <td>${report.doctoreCharges || '-'}</td>
                 </tr>
-              `).join('')}
+              `).join('') : ''}
             </table>
           </body>
         </html>

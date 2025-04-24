@@ -70,8 +70,7 @@
     "socket.io-client": "^4.8.1",
     "use-debounce": "^10.0.4",
     "uuid": "^11.0.5",
-    "xlsx": "^0.18.5",
-    "expo-dev-client": "~5.0.20"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

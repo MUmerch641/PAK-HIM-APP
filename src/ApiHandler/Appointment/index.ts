@@ -513,4 +513,32 @@ export const getAssignedDoctors = async (): Promise<Doctor[]> => {
 };
 
 
+export const getDoctorServices = async (doctorId: string): Promise<Service[]> => {
+  try {
+    const token = await getAuthToken();
 
+    if (!token) {
+      throw new Error("No auth token found");
+    }
+    const response = await axios.post<{ data: Service[] }>(
+      `https://pakhims.com/stg_user-api/doctor-services/getDoctorServices`,
+      { doctorId },
+      {
+      headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (!response.data || !Array.isArray(response.data.data)) {
+      throw new Error("Unexpected response format");
+    }
+    console.log("response", response);
+    return response.data.data;
+  } catch (error) {
+    Toast.show({
+      type: "error",
+      text1: "Error",
+      text2: "Error fetching doctor services",
+    });
+    throw error;
+  }
+};
