@@ -21,6 +21,7 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
   Platform,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { moderateScale, verticalScale } from 'react-native-size-matters';
@@ -139,8 +140,8 @@ const DeleteHistoryScreen = () => {
       socketService.on('appointment_deleted', onAppointmentDeleted);
       const unsubscribe = socketService.listenToProjectEvents((data: any) => {
         console.log(`Received event for ${projectId}:`, data);
-        if (data.module === 'appointments' && 
-           (data.operation === 'update' || data.operation === 'delete')) {
+        if (data.module === 'appointments' &&
+          (data.operation === 'update' || data.operation === 'delete')) {
           fetchDeletedAppointments(currentPage, selectedDoctor);
         }
       });
@@ -436,11 +437,11 @@ const DeleteHistoryScreen = () => {
   const PaginationControls = () => (
     <View style={styles(currentColors).paginationContainer}>
       <View style={styles(currentColors).totalCountContainer}>
-        <Ionicons 
-          name="trash-outline" 
-          size={moderateScale(18)} 
-          color="#0066FF" 
-          style={styles(currentColors).countIcon} 
+        <Ionicons
+          name="trash-outline"
+          size={moderateScale(18)}
+          color="#0066FF"
+          style={styles(currentColors).countIcon}
         />
         <Text style={styles(currentColors).totalCountText}>
           Total:
@@ -465,18 +466,18 @@ const DeleteHistoryScreen = () => {
             <Ionicons name="chevron-back" size={14} color={currentPage === 1 ? '#999' : '#0066FF'} />
           )}
         </TouchableOpacity>
-        
+
         <Text style={styles(currentColors).paginationText}>
           Page {currentPage} of {pagination.totalPages || 1}
         </Text>
-        
+
         <TouchableOpacity
           onPress={() => handlePageChange(currentPage + 1)}
           disabled={currentPage >= pagination.totalPages || isPaginating}
           style={[
             styles(currentColors).paginationButton,
             (currentPage >= pagination.totalPages || isPaginating) &&
-              styles(currentColors).paginationButtonDisabled,
+            styles(currentColors).paginationButtonDisabled,
           ]}
         >
           {isPaginating && currentPage < pagination.totalPages ? (
@@ -515,14 +516,14 @@ const DeleteHistoryScreen = () => {
         </View>
       </TouchableOpacity>
       {expandedRowIndex === index && (
-        <ExpandableDetails 
-          data={{ 
-            feeStatus: item.feeStatus, 
-            isChecked: item.isChecked, 
+        <ExpandableDetails
+          data={{
+            feeStatus: item.feeStatus,
+            isChecked: item.isChecked,
             deletedBy: item.deletedBy,
             name: item.patientId.patientName
-          }} 
-          type="delete" 
+          }}
+          type="delete"
           onUpdateData={() => {
           }}
         />
@@ -553,10 +554,27 @@ const DeleteHistoryScreen = () => {
           <Text style={styles(currentColors).connectionStatusText}>Offline</Text>
         </View>
       )}
-      
+
       <View style={styles(currentColors).header}>
-        <TouchableOpacity onPress={() => logout()}>
-        <Ionicons name="log-out-outline" size={24} color="white" />        </TouchableOpacity>
+        <TouchableOpacity onPress={() => {
+          Alert.alert(
+            "Logout",
+            "Are you sure you want to logout?",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Logout",
+                style: "destructive",
+                onPress: async () => {
+                  Toast.show({ type: "info", text1: "Logout", text2: "Starting..." });
+                  await logout();
+                },
+              },
+            ]
+          );
+        }}>
+          <Ionicons name="log-out-outline" size={24} color="white" />
+        </TouchableOpacity>
         <Text style={styles(currentColors).headerTitle}>Delete History</Text>
         <View style={styles(currentColors).headerRightContainer}>
           <ThemeToggleButton themeMode={themeMode} />
@@ -604,7 +622,7 @@ const DeleteHistoryScreen = () => {
           </TouchableOpacity>
           {isDoctorDropdownOpen && !isCurrentUserDoctor && (
             <View style={styles(currentColors).dropdown}>
-              <ScrollView 
+              <ScrollView
                 style={styles(currentColors).dropdownScroll}
                 showsVerticalScrollIndicator={true}
                 nestedScrollEnabled={true}
@@ -625,8 +643,8 @@ const DeleteHistoryScreen = () => {
             </View>
           )}
         </View>
-        <TouchableOpacity 
-          style={styles(currentColors).filterButton} 
+        <TouchableOpacity
+          style={styles(currentColors).filterButton}
           onPress={() => setShowDatePicker(true)}
         >
           <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
@@ -636,7 +654,7 @@ const DeleteHistoryScreen = () => {
               color={currentColors.dropdownText}
               style={{ marginRight: moderateScale(5) }}
             />
-            <Text 
+            <Text
               style={[styles(currentColors).filterButtonText, { flex: 1 }]}
               numberOfLines={1}
               ellipsizeMode="tail"
@@ -656,7 +674,7 @@ const DeleteHistoryScreen = () => {
             </TouchableOpacity>
           )}
         </TouchableOpacity>
-        
+
         {renderDatePicker()}
       </View>
 

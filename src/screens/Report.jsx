@@ -10,6 +10,7 @@ import {
   FlatList,
   RefreshControl,
   TouchableWithoutFeedback,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Dimensions } from 'react-native';
@@ -29,6 +30,7 @@ import ThemeToggleButton from '../components/Reuseable/ThemeToggleButton';
 import { useFocusEffect } from '@react-navigation/native';
 import socketService from '../socket';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logout } from '../Auth/authService';
 
 const { width } = Dimensions.get('window');
 
@@ -131,8 +133,8 @@ const Report = () => {
   useEffect(() => {
     if (!projectId) return;
     const unsubscribe = socketService.listenToProjectEvents((data) => {
-      if (data.module === 'appointments' || 
-         (data.module === 'employee' && 
+      if (data.module === 'appointments' ||
+        (data.module === 'employee' &&
           (data.operation === 'update' || data.operation === 'delete'))) {
         fetchReport(selectedDoctor);
       }
@@ -243,7 +245,23 @@ const Report = () => {
       ) : (
         <>
           <View style={styles(currentColors).header}>
-            <TouchableOpacity onPress={() => logout()}>
+            <TouchableOpacity onPress={() => {
+              Alert.alert(
+                "Logout",
+                "Are you sure you want to logout?",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Logout",
+                    style: "destructive",
+                    onPress: async () => {
+                      Toast.show({ type: "info", text1: "Logout", text2: "Starting..." });
+                      await logout();
+                    },
+                  },
+                ]
+              );
+            }}>
               <Ionicons name="log-out-outline" size={24} color="white" />
             </TouchableOpacity>
             <Text style={styles(currentColors).headerTitle}>Report</Text>
@@ -273,7 +291,7 @@ const Report = () => {
               </TouchableOpacity>
               {isDoctorDropdownOpen && !isCurrentUserDoctor && (
                 <View style={styles(currentColors).dropdown}>
-                  <ScrollView 
+                  <ScrollView
                     style={styles(currentColors).dropdownScroll}
                     showsVerticalScrollIndicator={true}
                     nestedScrollEnabled={true}

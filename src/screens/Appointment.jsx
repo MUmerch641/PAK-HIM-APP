@@ -14,6 +14,7 @@ import {
   Animated,
   Platform,
   Easing,
+  Alert,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Dimensions } from "react-native"
@@ -69,10 +70,10 @@ class RequestQueue {
         resolve,
         reject
       });
-      
+
       // Sort queue by priority (higher numbers = higher priority)
       this.queue.sort((a, b) => b.priority - a.priority);
-      
+
       if (!this.processing) {
         this.processQueue();
       }
@@ -93,10 +94,10 @@ class RequestQueue {
       if (this.currentAbortController) {
         this.currentAbortController.abort();
       }
-      
+
       // Create new abort controller for this request
       this.currentAbortController = new AbortController();
-      
+
       // Execute the request with the abort signal
       const result = await requestFn(this.currentAbortController.signal);
       resolve(result);
@@ -122,7 +123,7 @@ class RequestQueue {
 
 const AppointmentScreen = () => {
   const { currentColors, themeMode } = useTheme();
-  
+
   // State for UI components
   const [activeTab, setActiveTab] = useState("active");
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -130,8 +131,9 @@ const AppointmentScreen = () => {
   const [showTokenScreen, setShowTokenScreen] = useState(false);
   const [expandedRowIndex, setExpandedRowIndex] = useState(null);
   const [searchMRN, setSearchMRN] = useState("");
+  const [appointmentMode, setAppointmentMode] = useState("slot"); // "slot" (default) or "manual"
   const [debouncedSearchTerm] = useDebounce(searchMRN, 800);
-  
+
   // State for modals
   const [modalVisible, setModalVisible] = useState(false);
   const [vitalModalVisible, setVitalModalVisible] = useState(false);
@@ -139,12 +141,12 @@ const AppointmentScreen = () => {
   const [uncheckModal, setUncheckModal] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
-  
+
   // State for dropdowns
   const [isDoctorDropdownOpen, setIsDoctorDropdownOpen] = useState(false);
   const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  
+
   // State for data
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [appointments, setAppointments] = useState([]);
@@ -152,7 +154,7 @@ const AppointmentScreen = () => {
   const [selectedDoctor, setSelectedDoctor] = useState("");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("Paid");
   const [emergencyMessage, setEmergencyMessage] = useState("");
-  
+
   // State for loading and pagination
   const [isLoading, setIsLoading] = useState(true);
   const [isFetchingData, setIsFetchingData] = useState(false);
@@ -162,20 +164,20 @@ const AppointmentScreen = () => {
   const [totalAppointments, setTotalAppointments] = useState(0);
   const [hasMoreData, setHasMoreData] = useState(true);
   const [isDropdownLocked, setIsDropdownLocked] = useState(false);
-  
+
   // State for vitals updates
   const [vitalsUpdateKey, setVitalsUpdateKey] = useState(0);
-  
+
   // Animation values for glow effects
   const blueGlowOpacity = useRef(new Animated.Value(0)).current;
   const redGlowOpacity = useRef(new Animated.Value(0)).current;
   const yellowGlowOpacity = useRef(new Animated.Value(0)).current;
-  
+
   // Animation references
   const blueAnimationRef = useRef(null);
   const redAnimationRef = useRef(null);
   const yellowAnimationRef = useRef(null);
-  
+
   // Refs for tracking state
   const activeTabRef = useRef(activeTab);
   const currentPageRef = useRef(currentPage);
@@ -184,7 +186,7 @@ const AppointmentScreen = () => {
   const statusFilterRef = useRef(selectedStatusFilter);
   const searchMRNRef = useRef(searchMRN);
   const requestQueueRef = useRef(new RequestQueue());
-  
+
   // Keep all current filter state in one place for consistency
   const currentFiltersRef = useRef({
     tab: activeTab,
@@ -379,17 +381,17 @@ const AppointmentScreen = () => {
   // Set up socket connection
   useEffect(() => {
     socketService.connect();
-    
+
     const cleanup = socketService.listenToProjectEvents((eventType) => {
       console.log("Socket event received:", eventType);
-      
+
       // Increment vitals key to force re-render when socket events occur
       setVitalsUpdateKey((prev) => prev + 1);
 
       // Queue a fetch with high priority when socket events occur
       fetchAppointmentsWithFilters({}, 10); // 10 = high priority
     });
-    
+
     return () => {
       if (typeof cleanup === "function") {
         cleanup();
@@ -532,11 +534,11 @@ const AppointmentScreen = () => {
             setCurrentPage(newPage);
             currentPageRef.current = newPage;
             currentFiltersRef.current.page = newPage;
-            
+
             // Re-fetch with the new page
             return fetchAppointments(newPage, tab, doctorId, date, statusFilter, search, signal);
           }
-          
+
           // Successfully fetched data, break the retry loop
           break;
         } else {
@@ -548,9 +550,9 @@ const AppointmentScreen = () => {
           console.log('Request was aborted');
           return;
         }
-        
+
         console.error("Failed to fetch appointments:", error);
-        
+
         attempt++;
         if (attempt >= maxRetries) {
           setAppointments([]);
@@ -564,7 +566,7 @@ const AppointmentScreen = () => {
             currentPageRef.current = newPage;
             currentFiltersRef.current.page = newPage;
           }
-   
+
         } else {
           // Wait before retry
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -616,7 +618,7 @@ const AppointmentScreen = () => {
         currentFiltersRef.current.page = overrideFilters.page;
         // Update newState to ensure fetchAppointmentsWithFilters uses the correct page
         newState.page = overrideFilters.page;
-      } 
+      }
       // Otherwise, use any page from the newState object
       else if (newState.page !== undefined) {
         setCurrentPage(newState.page);
@@ -635,7 +637,7 @@ const AppointmentScreen = () => {
       fetchAppointmentsWithFilters({ ...newState, ...(overrideFilters || {}) }, 5); // Medium priority
     } catch (error) {
       console.error("Action failed:", error);
- 
+
 
       // Refresh data with current state
       fetchAppointmentsWithFilters();
@@ -701,9 +703,9 @@ const AppointmentScreen = () => {
           prevAppointments.map((appt) =>
             appt._id === selectedAppointment._id
               ? {
-                  ...appt,
-                  vitals: appointmentData.vitals,
-                }
+                ...appt,
+                vitals: appointmentData.vitals,
+              }
               : appt
           )
         );
@@ -715,7 +717,7 @@ const AppointmentScreen = () => {
         errorMessage: "Failed to add vitals",
       }
     );
-    
+
     // Force vitals component to update
     setVitalsUpdateKey((prev) => prev + 1);
   };
@@ -727,16 +729,16 @@ const AppointmentScreen = () => {
         // Store current page and count for pagination handling
         const currentPageBefore = currentPage;
         const currentItemCount = appointments.length;
-        
+
         // Call delete API
         await deleteAppointment(appointmentId, reason);
-        
+
         // Handle edge case: if this is the last item on a page > 1
         if (currentItemCount === 1 && currentPageBefore > 1) {
           // Force navigation to previous page
           return { page: currentPageBefore - 1 };
         }
-      }, 
+      },
       {
         socketEvent: { type: "appointments", action: "delete" },
         closeModal: "delete",
@@ -752,10 +754,10 @@ const AppointmentScreen = () => {
         // Store current page and count for pagination handling
         const currentPageBefore = currentPage;
         const currentItemCount = appointments.length;
-        
+
         // Call uncheck API
         await uncheckAppointment(selectedAppointment._id);
-        
+
         // Handle edge case: if this is the last item on a page > 1
         if (currentItemCount === 1 && currentPageBefore > 1 && activeTab === "checked") {
           // Force navigation to previous page while switching to active tab
@@ -839,10 +841,10 @@ const AppointmentScreen = () => {
         // Store current page and count for pagination handling
         const currentPageBefore = currentPage;
         const currentItemCount = appointments.length;
-        
+
         // Call check appointment API
         await checkAppointment(selectedAppointment._id, status, "Referred to specialist", []);
-        
+
         // Handle edge case: if this is the last item on a page > 1
         if (currentItemCount === 1 && currentPageBefore > 1 && activeTab === "active") {
           // Force navigation to previous page while switching to checked tab
@@ -1090,71 +1092,71 @@ const AppointmentScreen = () => {
     const blueAnimatedStyle =
       Platform.OS === "web"
         ? {
-            backgroundColor: blueGlowOpacity.interpolate({
-              inputRange: [0.3, 0.4, 0.6, 0.9],
-              outputRange: [
-                "rgba(102, 204, 51, 0.3)",
-                "rgba(102, 204, 51, 0.5)",
-                "rgba(102, 204, 51, 0.7)",
-                "rgba(102, 204, 51, 0.9)",
-              ],
-            }),
-            shadowColor: "rgb(102, 204, 51)",
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: blueGlowOpacity,
-            shadowRadius: 20,
-            elevation: 15,
-          }
+          backgroundColor: blueGlowOpacity.interpolate({
+            inputRange: [0.3, 0.4, 0.6, 0.9],
+            outputRange: [
+              "rgba(102, 204, 51, 0.3)",
+              "rgba(102, 204, 51, 0.5)",
+              "rgba(102, 204, 51, 0.7)",
+              "rgba(102, 204, 51, 0.9)",
+            ],
+          }),
+          shadowColor: "rgb(102, 204, 51)",
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: blueGlowOpacity,
+          shadowRadius: 20,
+          elevation: 15,
+        }
         : {
-            // For mobile, use a fixed background color
-            backgroundColor: "rgba(102, 204, 51, 0.2)",
-          };
+          // For mobile, use a fixed background color
+          backgroundColor: "rgba(102, 204, 51, 0.2)",
+        };
 
     const redAnimatedStyle =
       Platform.OS === "web"
         ? {
-            backgroundColor: redGlowOpacity.interpolate({
-              inputRange: [0.3, 0.4, 0.6, 0.9],
-              outputRange: [
-                "rgba(204, 0, 0, 0.3)",
-                "rgba(204, 0, 0, 0.4)",
-                "rgba(204, 0, 0, 0.5)",
-                "rgba(204, 0, 0, 0.6)",
-              ],
-            }),
-            shadowColor: "rgb(255, 0, 0)",
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: redGlowOpacity,
-            shadowRadius: 20,
-            elevation: 15,
-          }
+          backgroundColor: redGlowOpacity.interpolate({
+            inputRange: [0.3, 0.4, 0.6, 0.9],
+            outputRange: [
+              "rgba(204, 0, 0, 0.3)",
+              "rgba(204, 0, 0, 0.4)",
+              "rgba(204, 0, 0, 0.5)",
+              "rgba(204, 0, 0, 0.6)",
+            ],
+          }),
+          shadowColor: "rgb(255, 0, 0)",
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: redGlowOpacity,
+          shadowRadius: 20,
+          elevation: 15,
+        }
         : {
-            // For mobile, use a fixed background color
-            backgroundColor: "rgba(204, 0, 0, 0.2)",
-          };
+          // For mobile, use a fixed background color
+          backgroundColor: "rgba(204, 0, 0, 0.2)",
+        };
 
     const yellowAnimatedStyle =
       Platform.OS === "web"
         ? {
-            backgroundColor: yellowGlowOpacity.interpolate({
-              inputRange: [0.3, 0.4, 0.6, 0.9],
-              outputRange: [
-                "rgba(204, 204, 0, 0.3)",
-                "rgba(204, 204, 0, 0.35)",
-                "rgba(204, 204, 0, 0.4)",
-                "rgba(204, 204, 0, 0.5)",
-              ],
-            }),
-            shadowColor: "rgb(255, 255, 0)",
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: yellowGlowOpacity,
-            shadowRadius: 20,
-            elevation: 15,
-          }
+          backgroundColor: yellowGlowOpacity.interpolate({
+            inputRange: [0.3, 0.4, 0.6, 0.9],
+            outputRange: [
+              "rgba(204, 204, 0, 0.3)",
+              "rgba(204, 204, 0, 0.35)",
+              "rgba(204, 204, 0, 0.4)",
+              "rgba(204, 204, 0, 0.5)",
+            ],
+          }),
+          shadowColor: "rgb(255, 255, 0)",
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: yellowGlowOpacity,
+          shadowRadius: 20,
+          elevation: 15,
+        }
         : {
-            // For mobile, use a fixed background color
-            backgroundColor: "rgba(204, 204, 0, 0.2)",
-          };
+          // For mobile, use a fixed background color
+          backgroundColor: "rgba(204, 204, 0, 0.2)",
+        };
 
     // Determine which animated style to use
     let animatedStyle = {};
@@ -1286,29 +1288,15 @@ const AppointmentScreen = () => {
 
   // Create animated styles for the add button
   const addButtonAnimatedStyle = {
-    backgroundColor:
-      Platform.OS === "web"
-        ? blueGlowOpacity.interpolate({
-            inputRange: [0, 0.3, 0.5, 1],
-            outputRange: [
-              "rgba(102, 178, 255, 0.3)",
-              "rgba(102, 178, 255, 0.5)",
-              "rgba(102, 178, 255, 0.8)",
-              "rgba(102, 178, 255, 1)",
-            ],
-          })
-        : "rgba(102, 178, 255, 0.7)",
+    backgroundColor: "transparent",
     width: moderateScale(40),
     height: moderateScale(40),
     borderRadius: moderateScale(8),
+    borderWidth: 1,
+    borderColor: currentColors.headerText || "#ffffff",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "rgb(0, 102, 255)",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: Platform.OS === "web" ? blueGlowOpacity : blueGlowOpacity.__getValue(),
-    shadowRadius: 15,
-    elevation: 10,
-    opacity: Platform.OS !== "web" ? blueGlowOpacity : 1,
+    elevation: 0,
   };
 
   // Create animated styles for the active tab
@@ -1316,14 +1304,14 @@ const AppointmentScreen = () => {
     backgroundColor:
       Platform.OS === "web"
         ? blueGlowOpacity.interpolate({
-            inputRange: [0, 0.3, 0.5, 1],
-            outputRange: [
-              "rgba(0, 102, 255, 0.3)",
-              "rgba(0, 102, 255, 0.5)",
-              "rgba(0, 102, 255, 0.8)",
-              "rgba(0, 102, 255, 1)",
-            ],
-          })
+          inputRange: [0, 0.3, 0.5, 1],
+          outputRange: [
+            "rgba(0, 102, 255, 0.3)",
+            "rgba(0, 102, 255, 0.5)",
+            "rgba(0, 102, 255, 0.8)",
+            "rgba(0, 102, 255, 1)",
+          ],
+        })
         : "#0066FF",
     shadowColor: "rgb(0, 102, 255)",
     shadowOffset: { width: 0, height: 0 },
@@ -1346,6 +1334,7 @@ const AppointmentScreen = () => {
           onClose={() => setShowPatientScreen(false)}
           fetchAppointments={fetchAppointments}
           setLoading={setIsLoading}
+          appointmentMode={appointmentMode}
         />
       ) : showTokenScreen ? (
         <PDFGenerator tokenData={selectedAppointment} onClose={() => setShowTokenScreen(false)} />
@@ -1353,9 +1342,22 @@ const AppointmentScreen = () => {
         <>
           <View style={styles(currentColors).header}>
             <TouchableOpacity
-              onPress={async () => {
-                Toast.show({ type: "info", text1: "Logout", text2: "Starting..." });
-                await logout();
+              onPress={() => {
+                Alert.alert(
+                  "Logout",
+                  "Are you sure you want to logout?",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Logout",
+                      style: "destructive",
+                      onPress: async () => {
+                        Toast.show({ type: "info", text1: "Logout", text2: "Starting..." });
+                        await logout();
+                      },
+                    },
+                  ]
+                );
               }}
             >
               <Ionicons name="log-out-outline" size={24} color="white" />
@@ -1372,11 +1374,46 @@ const AppointmentScreen = () => {
                 value={searchMRN}
                 onChangeText={setSearchMRN}
               />
-              <Ionicons name="search" size={moderateScale(20)} color="#ffffff" />
+              <Ionicons name="search" size={moderateScale(15)} color="#ffffff" />
+            </View>
+            <View style={styles(currentColors).modeToggleContainer}>
+              <TouchableOpacity
+                style={[
+                  styles(currentColors).modeToggleButton,
+                  appointmentMode === "manual" && styles(currentColors).modeToggleButtonActive,
+                ]}
+                onPress={() => setAppointmentMode("manual")}
+              >
+                <Text
+                  style={[
+                    styles(currentColors).modeToggleText,
+                    appointmentMode === "manual" && styles(currentColors).modeToggleTextActive,
+                  ]}
+                >
+                  M
+                </Text>
+              </TouchableOpacity>
+              <View style={{ width: 1, backgroundColor: currentColors.headerText || "#ffffff" }} />
+              <TouchableOpacity
+                style={[
+                  styles(currentColors).modeToggleButton,
+                  appointmentMode === "slot" && styles(currentColors).modeToggleButtonActive,
+                ]}
+                onPress={() => setAppointmentMode("slot")}
+              >
+                <Text
+                  style={[
+                    styles(currentColors).modeToggleText,
+                    appointmentMode === "slot" && styles(currentColors).modeToggleTextActive,
+                  ]}
+                >
+                  S
+                </Text>
+              </TouchableOpacity>
             </View>
             <Animated.View style={addButtonAnimatedStyle}>
               <TouchableOpacity onPress={() => setShowPatientScreen(true)}>
-                <Ionicons name="add" size={moderateScale(24)} color="white" />
+                <Ionicons name="add" size={moderateScale(24)} color={currentColors.headerText || "#ffffff"} />
               </TouchableOpacity>
             </Animated.View>
           </View>
@@ -1501,7 +1538,7 @@ const AppointmentScreen = () => {
                     e.stopPropagation(); // Prevent triggering date picker
                     clearDateSelection();
                   }}
-                  style={{ padding: moderateScale(4) }}
+                  style={{ justifyContent: "center", alignItems: "center" }}
                 >
                   <Ionicons name="close-circle" size={moderateScale(18)} color="#0066FF" />
                 </TouchableOpacity>
@@ -1599,7 +1636,9 @@ const AppointmentScreen = () => {
           />
         </>
       )}
-      <Toast style={{ zIndex: 1001 }} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 99999, elevation: 99999, pointerEvents: 'box-none' }}>
+        <Toast />
+      </View>
       <ActionMenu
         isOpen={isActionModalOpen}
         onClose={() => setIsActionModalOpen(false)}
@@ -1694,7 +1733,8 @@ const styles = (currentColors) =>
       alignItems: "center",
       justifyContent: "space-between",
       backgroundColor: "transparent",
-      padding: moderateScale(6),
+      paddingHorizontal: moderateScale(10),
+      height: moderateScale(40),
       borderRadius: moderateScale(10),
       borderWidth: moderateScale(1),
       borderColor: currentColors.dropdownBorder,
@@ -1720,9 +1760,10 @@ const styles = (currentColors) =>
     searchContainer: {
       flexDirection: "row",
       paddingHorizontal: moderateScale(15),
-      paddingVertical: verticalScale(10),
+      paddingVertical: verticalScale(15),
       gap: moderateScale(10),
       backgroundColor: currentColors.headerBackground,
+      alignItems: "center",
     },
     searchBar: {
       flex: 1,
@@ -1733,6 +1774,7 @@ const styles = (currentColors) =>
       paddingHorizontal: moderateScale(8),
       borderWidth: moderateScale(1),
       borderColor: currentColors.dropdownBorder,
+      height: moderateScale(40),
     },
     searchInput: {
       flex: 1,
@@ -1741,11 +1783,39 @@ const styles = (currentColors) =>
       fontSize: moderateScale(14),
       color: currentColors.headerText,
     },
+    modeToggleContainer: {
+      flexDirection: "row",
+      borderRadius: moderateScale(8),
+      borderWidth: 1,
+      borderColor: currentColors.headerText || "#ffffff",
+      overflow: "hidden",
+      flexShrink: 0,
+      height: moderateScale(35),
+    },
+    modeToggleButton: {
+      paddingHorizontal: moderateScale(8),
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "transparent",
+    },
+    modeToggleButtonActive: {
+      backgroundColor: currentColors.headerText || "#ffffff",
+    },
+    modeToggleText: {
+      fontSize: moderateScale(12),
+      fontWeight: "600",
+      color: currentColors.headerText || "#ffffff",
+    },
+    modeToggleTextActive: {
+      color: currentColors.activeTabBackground || "#0066FF",
+    },
     addButton: {
-      backgroundColor: "#66B2FF",
+      backgroundColor: "transparent",
       width: moderateScale(40),
       height: moderateScale(40),
       borderRadius: moderateScale(8),
+      borderWidth: 1,
+      borderColor: currentColors.headerText || "#ffffff",
       justifyContent: "center",
       alignItems: "center",
     },

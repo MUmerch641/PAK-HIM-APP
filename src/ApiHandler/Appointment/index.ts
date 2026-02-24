@@ -29,7 +29,7 @@ export interface Appointment {
 
 export const getAllAppointments = async (
   { count = 100, pageNo = 1, sort = "accending", checkStatus = "all", appointmentDate = "", search = "", doctorId = "", feeStatus = "" }: { count?: number, pageNo?: number, sort?: string, checkStatus?: string, appointmentDate?: string, search?: string, doctorId?: string, feeStatus?: string } = {}
-): Promise<Appointment[]> => {
+): Promise<{ data: Appointment[]; totalCount?: number;[key: string]: any }> => {
   try {
     const token = await getAuthToken();
 
@@ -56,7 +56,7 @@ export const getAllAppointments = async (
       }
     );
     if (!response.data || !Array.isArray(response.data.data)) {
-      throw new Error("Unexpected response format");
+      return { data: [], totalCount: 0 };
     }
 
     return response.data;
@@ -233,7 +233,7 @@ export const getAppointmentsByDoctorId = async (
   appointmentDate: string = "",
   checkStatus: string = "all",
   feeStatus: string = "all"
-): Promise<Appointment[]> => {
+): Promise<{ data: Appointment[]; totalCount?: number;[key: string]: any }> => {
   try {
     const token = await getAuthToken();
 
@@ -250,7 +250,7 @@ export const getAppointmentsByDoctorId = async (
     );
 
     if (!response.data || !Array.isArray(response.data.data)) {
-      throw new Error("Unexpected response format");
+      return { data: [], totalCount: 0 };
     }
 
     return response.data;
@@ -338,7 +338,7 @@ export const getStatusOptions = async (): Promise<Appointment[]> => {
     );
 
     if (!response.data || !Array.isArray(response.data.data)) {
-      throw new Error("Unexpected response format");
+      return [];
     }
 
     return response.data.data;
@@ -493,7 +493,7 @@ export const getAssignedDoctors = async (): Promise<Doctor[]> => {
     );
 
     if (!response.data || !response.data.isSuccess || !Array.isArray(response.data.data)) {
-      throw new Error("Unexpected response format");
+      return [];
     }
 
     return response.data.data;
@@ -524,12 +524,12 @@ export const getDoctorServices = async (doctorId: string): Promise<Service[]> =>
       `https://pakhims.com/stg_user-api/doctor-services/getDoctorServices`,
       { doctorId },
       {
-      headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` },
       }
     );
 
     if (!response.data || !Array.isArray(response.data.data)) {
-      throw new Error("Unexpected response format");
+      return [];
     }
     console.log("response", response);
     return response.data.data;
@@ -539,6 +539,115 @@ export const getDoctorServices = async (doctorId: string): Promise<Service[]> =>
       text1: "Error",
       text2: "Error fetching doctor services",
     });
+    throw error;
+  }
+};
+
+// Time Slots
+export interface TimeSlot {
+  slot: string;
+  slotId: string;
+  status: number; // 0 = available, 1 = booked, 2 = expired
+}
+
+interface TimeSlotsResponse {
+  isSuccess: boolean;
+  data: TimeSlot[];
+  message: string;
+  totalCount: number;
+}
+
+export const getTimeSlots = async (doctorId: string, date: string): Promise<TimeSlot[]> => {
+  try {
+    const token = await getAuthToken();
+
+    if (!token) {
+      router.replace('/Login');
+      throw new Error("No auth token found");
+    }
+
+    const response = await api.get<TimeSlotsResponse>(
+      `/time-slots/get_all_time_slots`,
+      {
+        params: { doctorId, date },
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (!response.data || !response.data.isSuccess || !Array.isArray(response.data.data)) {
+      return [];
+    }
+
+    return response.data.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      router.replace('/Login');
+    }
+
+    Toast.show({
+      type: "error",
+      text1: "Oops!",
+      text2: "Could not load time slots. Please try again.",
+    });
+
+    throw error;
+  }
+};
+
+// Slot-wise Appointment Booking
+export interface SlotAppointmentPayload {
+  doctorId: string;
+  patientId: string;
+  services: string[];
+  feeStatus: string;
+  appointmentDate: string;
+  appointmentTime: { from: string; to: string };
+  slotId: string;
+  discount: number;
+  extra: Record<string, unknown>;
+}
+
+interface SlotAppointmentResponse {
+  isSuccess: boolean;
+  data: any;
+  message: string;
+}
+
+export const addAppointmentSlotWise = async (payload: SlotAppointmentPayload): Promise<any> => {
+  try {
+    const token = await getAuthToken();
+
+    if (!token) {
+      router.replace('/Login');
+      throw new Error("No auth token found");
+    }
+
+    const response = await api.post<SlotAppointmentResponse>(
+      `/appointments/addAppointmentSlotWise`,
+      payload,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (!response.data || !response.data.isSuccess) {
+      throw new Error(response.data?.message || "Failed to book appointment");
+    }
+
+    return response.data.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      router.replace('/Login');
+    }
+
+    Toast.show({
+      type: "error",
+      text1: "Booking Failed",
+      text2: axios.isAxiosError(error)
+        ? error.response?.data?.message || "Could not book appointment. Please try again."
+        : "Could not book appointment. Please try again.",
+    });
+
     throw error;
   }
 };

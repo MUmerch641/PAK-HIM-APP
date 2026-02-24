@@ -87,7 +87,6 @@ const Input: React.FC<InputProps & { currentColors?: any }> = ({
                     autoCapitalize={autoCapitalize}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
-                    color={currentColors.dropdownText}
                 />
                 {secureTextEntry && (
                     <TouchableOpacity
@@ -314,7 +313,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ onResetPasswo
                 <View style={styles(currentColors).imageContainer}>
                     <Image
                         source={require('../../../assets/images/login.png')} // Update image path
-                        style={[styles(currentColors).topImage, 
+                        style={[styles(currentColors).topImage,
                         { opacity: currentColors.background === '#1A1A2E' ? 0.8 : 1 }]} // Slightly dim in dark mode
                     />
                 </View>

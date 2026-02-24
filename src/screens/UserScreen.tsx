@@ -35,20 +35,6 @@ import Toast from "react-native-toast-message";
 interface ExtendedUserProfileData extends UserProfileData {
   firstName?: string;
   lastName?: string;
-  fullName?: string;
-  userCategory?: string;
-  userType?: string[];
-  isActive?: boolean;
-  phonNumber?: string;
-  photoUrl?: string;
-  projectId?: string;
-  city?: string;
-  nationality?: string;
-  jobType?: string;
-  dr_details?: {
-    specialization?: string;
-    slotIntervalTime?: string;
-  };
 }
 
 const { width } = Dimensions.get('window');
@@ -88,7 +74,7 @@ export default function ResponsiveProfileScreen() {
       if (projectProfileData) {
         setProjectData(projectProfileData);
       }
-      else{
+      else {
         const projectDataString = await AsyncStorage.getItem('projectProfileData');
         if (projectDataString) {
           const storedProjectData = JSON.parse(projectDataString);
@@ -137,7 +123,7 @@ export default function ResponsiveProfileScreen() {
           url: qrValue,
           title: 'Online Appointment Link',
         });
-        
+
         if (result.action === Share.sharedAction) {
           if (result.activityType) {
             console.log('Shared with activity type:', result.activityType);
@@ -261,7 +247,23 @@ export default function ResponsiveProfileScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
       <View style={[styles.header, { backgroundColor: currentColors.headerBackground }]}>
-        <TouchableOpacity onPress={() => logout()}>
+        <TouchableOpacity onPress={() => {
+          Alert.alert(
+            "Logout",
+            "Are you sure you want to logout?",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Logout",
+                style: "destructive",
+                onPress: async () => {
+                  Toast.show({ type: "info", text1: "Logout", text2: "Starting..." });
+                  await logout();
+                },
+              },
+            ]
+          );
+        }}>
           <Ionicons name="log-out-outline" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
@@ -271,9 +273,9 @@ export default function ResponsiveProfileScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={fetchData} 
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={fetchData}
           />
         }
       >

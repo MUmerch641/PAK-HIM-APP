@@ -242,7 +242,7 @@ export const getDoctors = async (params: GetDoctorsParams): Promise<DoctorsRespo
     const queryParams: any = {
       count: params.count ?? 10,
       pageNo: params.pageNo ?? 1,
-      sort: params.sort ?? 'accending', 
+      sort: params.sort ?? 'accending',
     };
 
     if (params.receptionistId) {
@@ -406,21 +406,22 @@ export const getInsuranceCompanies = async (params: GetInsuranceCompaniesParams)
       params: queryParams,
     });
 
-    const insuranceCompanies: InsuranceCompany[] = response.data.data.map((company: any) => ({
+    const rawCompanies = Array.isArray(response.data?.data) ? response.data.data : [];
+    const insuranceCompanies: InsuranceCompany[] = rawCompanies.map((company: any) => ({
       _id: company._id,
       companyName: company.companyName,
       isActive: company.isActive,
       // Map other fields as needed
     }));
 
-    return { 
-      data: insuranceCompanies, 
-      totalCount: response.data.totalCount, 
-      currentPage: params.pageNo ?? 1 
+    return {
+      data: insuranceCompanies,
+      totalCount: response.data.totalCount,
+      currentPage: params.pageNo ?? 1
     };
   } catch (error: any) {
     console.log("Error fetching insurance companies:", error.response?.data || error.message);
-  
+
     throw error;
   }
 };
@@ -430,7 +431,7 @@ export const getInsuranceServicesByCompanyId = async (companyId: string): Promis
     if (!validateHexId(companyId)) {
       throw new Error("Invalid companyId format");
     }
-    
+
     const token = await getAuthToken();
     if (!token) {
       Toast.show({
@@ -442,7 +443,7 @@ export const getInsuranceServicesByCompanyId = async (companyId: string): Promis
     }
 
     const url = `${BASE_URL}/insurance-services/getAllServciesByComapnayId/${companyId}`;
-    
+
     const response = await axios.get(url, {
       headers: {
         "Content-Type": "application/json",
@@ -450,7 +451,8 @@ export const getInsuranceServicesByCompanyId = async (companyId: string): Promis
       },
     });
 
-    const insuranceServices: InsuranceService[] = response.data.data.map((service: any) => ({
+    const rawServices = Array.isArray(response.data?.data) ? response.data.data : [];
+    const insuranceServices: InsuranceService[] = rawServices.map((service: any) => ({
       _id: service._id,
       serviceName: service.serviceName,
       companyId: service.companyId,
@@ -459,10 +461,10 @@ export const getInsuranceServicesByCompanyId = async (companyId: string): Promis
       // Map other fields as needed
     }));
 
-    return { 
-      data: insuranceServices, 
-      totalCount: response.data.totalCount || insuranceServices.length, 
-      currentPage: 1 
+    return {
+      data: insuranceServices,
+      totalCount: response.data.totalCount || insuranceServices.length,
+      currentPage: 1
     };
   } catch (error: any) {
     console.error("Error fetching insurance services:", error.response?.data || error.message);

@@ -226,7 +226,7 @@ export const checkRememberedUser = async (): Promise<UserData | null> => {
     if (isRemembered === "true") {
       const token = await AsyncStorage.getItem("authToken");
       const userDataString = await AsyncStorage.getItem("userData");
-      
+
       if (token && userDataString) {
         const userData = JSON.parse(userDataString);
         setAuthToken(token);
@@ -245,7 +245,7 @@ export const checkAuthStatus = async (): Promise<boolean> => {
   try {
     const token = await AsyncStorage.getItem("authToken");
     const userDataString = await AsyncStorage.getItem("userData");
-    
+
     if (token && userDataString) {
       const userData = JSON.parse(userDataString);
       setAuthToken(token);
@@ -335,9 +335,13 @@ export const getUserProfile = async (): Promise<UserProfileData | null> => {
     }
 
     await AsyncStorage.setItem("userProfileData", JSON.stringify(response.data.data));
-    
+
     return response.data.data;
   } catch (error: any) {
+    if (error.response?.status === 401) {
+      logout();
+      return null;
+    }
     const errorMessage = error.response?.data?.message || error.message || "Failed to fetch user profile";
     Toast.show({
       type: "error",
@@ -361,19 +365,20 @@ export const getProjectProfile = async (): Promise<ProjectProfileData | null> =>
     const response = await fetch("https://pakhims.com/admin-api/projects/getProjectProfile", {
       method: "GET",
       headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${await AsyncStorage.getItem("authToken")}`
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${await AsyncStorage.getItem("authToken")}`
       }
     }).then(res => res.json());
     if (!response.isSuccess) {
-      throw new Error(response.data.message || "Failed to fetch project profile");
+      throw new Error(response.message || "Failed to fetch project profile");
     }
 
-    // await AsyncStorage.setItem("projectProfileData", JSON.stringify(response.data.data));
-    
+    await AsyncStorage.setItem("projectProfileData", JSON.stringify(response.data));
+
     return response.data;
   } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message || "Failed to fetch project profile";
+    // Note: fetch errors don't have error.response like axios does
+    const errorMessage = error.message || "Failed to fetch project profile";
     Toast.show({
       type: "error",
       text1: "Error",

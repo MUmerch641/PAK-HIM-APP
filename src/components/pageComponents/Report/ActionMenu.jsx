@@ -32,7 +32,7 @@ const ActionMenu = ({ visible, onClose, style, report, setShowViewScreen, dateRa
         feeStatus: "paid",
       };
       const response = await getFinancialReport(params);
-      setReports(response);
+      setReports(response?.report || []);
     } catch (error) {
       console.error("Error fetching hospital report:", error);
     }
@@ -81,7 +81,7 @@ const ActionMenu = ({ visible, onClose, style, report, setShowViewScreen, dateRa
                 <th>Service Charge</th>
                 <th>Dr. Charge</th>
               </tr>
-              ${response.map(report => `
+              ${(response?.report || []).map(report => `
                 <tr>
                   <td>${report.name || '-'}</td>
                   <td>${report.discount || '-'}</td>
