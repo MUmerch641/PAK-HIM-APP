@@ -5,7 +5,6 @@ import * as XLSX from 'xlsx';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
-import * as MediaLibrary from 'expo-media-library';
 import { shareAsync } from 'expo-sharing';
 import ExpandableDetails from '../../Reuseable/Expandable'; // Import ExpandableDetails
 
@@ -44,7 +43,7 @@ const FinancialReport = ({ onClose, selectedDate, Reports }) => {
       setFilteredReports(reportData);
     } else {
       const searchQuery = searchText.toLowerCase().trim();
-      const filtered = reportData.filter(report => 
+      const filtered = reportData.filter(report =>
         (report.name && report.name.toLowerCase().includes(searchQuery)) ||
         (report.createdBy && report.createdBy.toLowerCase().includes(searchQuery)) ||
         (report.discountentName && report.discountentName.toLowerCase().includes(searchQuery)) ||
@@ -118,86 +117,41 @@ const FinancialReport = ({ onClose, selectedDate, Reports }) => {
     try {
       setLoadingExcel(true);
 
-      // Request storage permissions for Android
-      if (Platform.OS === 'android') {
-        const { status } = await MediaLibrary.requestPermissionsAsync();
-        if (status !== 'granted') {
-          alert('Storage permission is required to save files to Downloads folder.');
-          return;
-        }
-      }
-
-      const data = filteredReports?.map(report => ({
-        Name: report.name || '-',
-        Discount: report.discount || '-',
-        Discountent: report.discountentName || '-',
-        'Created by': report.createdBy || '-',
-        'Service Charge': report.servicesCharges || '-',
-        'Dr. Charge': report.doctoreCharges || '-',
-      }));
-
-      // Convert data to worksheet
-      const worksheet = XLSX.utils.json_to_sheet(data);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-
       // Convert workbook to binary Excel format
       const excelBinary = XLSX.write(workbook, { type: "base64", bookType: "xlsx" });
 
       // Define file path
-      let fileUri;
+      const safeFilename = `Financial_Report_${selectedDate.fromDate}_to_${selectedDate.toDate}.xlsx`;
+
       if (Platform.OS === 'android') {
-        // First, save to cache directory
-        fileUri = `${FileSystem.cacheDirectory}Financial_Report_${selectedDate.fromDate}_to_${selectedDate.toDate}.xlsx`;
-        await FileSystem.writeAsStringAsync(fileUri, excelBinary, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
+        // Request user to choose a directory to save the file using Scoped Storage
+        const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
 
-        // Check if the file exists
-        const fileInfo = await FileSystem.getInfoAsync(fileUri);
-        if (!fileInfo.exists) {
-          throw new Error('Failed to create Excel file in cache directory.');
-        }
+        if (permissions.granted) {
+          // Create the file in the selected directory
+          const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
+            permissions.directoryUri,
+            safeFilename,
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          );
 
-        // Try saving to Downloads using MediaLibrary
-        try {
-          const asset = await MediaLibrary.createAssetAsync(fileUri);
-          await MediaLibrary.createAlbumAsync('Download', asset, false);
-          fileUri = `Downloads/Financial_Report_${selectedDate.fromDate}_to_${selectedDate.toDate}.xlsx`;
-        } catch (mediaError) {
-          console.error('MediaLibrary failed:', mediaError);
-          // Fallback to StorageAccessFramework
-          const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-          if (permissions.granted) {
-            const base64 = await FileSystem.readAsStringAsync(fileUri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
-              permissions.directoryUri,
-              `Financial_Report_${selectedDate.fromDate}_to_${selectedDate.toDate}.xlsx`,
-              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            );
-            await FileSystem.writeAsStringAsync(fileUri, base64, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            fileUri = `Downloads/Financial_Report_${selectedDate.fromDate}_to_${selectedDate.toDate}.xlsx`;
-          } else {
-            throw new Error('Storage access permission denied.');
-          }
+          // Write the base64 content to the newly created file
+          await FileSystem.writeAsStringAsync(fileUri, excelBinary, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+
+          alert(`Excel file successfully saved!`);
+        } else {
+          console.log('User cancelled directory selection or permission denied.');
         }
       } else {
         // iOS: Save to document directory and allow sharing
-        fileUri = `${FileSystem.documentDirectory}Financial_Report_${selectedDate.fromDate}_to_${selectedDate.toDate}.xlsx`;
+        const fileUri = `${FileSystem.documentDirectory}${safeFilename}`;
         await FileSystem.writeAsStringAsync(fileUri, excelBinary, {
           encoding: FileSystem.EncodingType.Base64,
         });
-      }
 
-      // Show success message
-      alert(`Excel file saved to: ${fileUri}${Platform.OS === 'ios' ? '\nYou can share it to save to another location.' : ''}`);
-
-      // On iOS, offer to share the file
-      if (Platform.OS === 'ios') {
+        // On iOS, offer to share the file
         await Sharing.shareAsync(fileUri);
       }
     } catch (error) {
@@ -211,15 +165,6 @@ const FinancialReport = ({ onClose, selectedDate, Reports }) => {
   const handlePDF = async () => {
     try {
       setLoadingPDF(true);
-
-      // Request storage permissions for Android
-      if (Platform.OS === 'android') {
-        const { status } = await MediaLibrary.requestPermissionsAsync();
-        if (status !== 'granted') {
-          alert('Storage permission is required to save files to Downloads folder.');
-          return;
-        }
-      }
 
       const htmlContent = `
         <html>
@@ -267,56 +212,40 @@ const FinancialReport = ({ onClose, selectedDate, Reports }) => {
       `;
 
       const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      let fileUri;
+      const safeFilename = `Financial_Report_${selectedDate.fromDate}_to_${selectedDate.toDate}.pdf`;
 
       if (Platform.OS === 'android') {
-        // First, move to cache directory
-        fileUri = `${FileSystem.cacheDirectory}Financial_Report_${selectedDate.fromDate}_to_${selectedDate.toDate}.pdf`;
-        await FileSystem.moveAsync({ from: uri, to: fileUri });
+        // Request user to choose a directory to save the file using Scoped Storage
+        const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
 
-        // Check if the file exists
-        const fileInfo = await FileSystem.getInfoAsync(fileUri);
-        if (!fileInfo.exists) {
-          throw new Error('Failed to create PDF file in cache directory.');
-        }
+        if (permissions.granted) {
+          // Read the temporary PDF file as Base64
+          const base64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
 
-        // Try saving to Downloads using MediaLibrary
-        try {
-          const asset = await MediaLibrary.createAssetAsync(fileUri);
-          await MediaLibrary.createAlbumAsync('Download', asset, false);
-          fileUri = `Downloads/Financial_Report_${selectedDate.fromDate}_to_${selectedDate.toDate}.pdf`;
-        } catch (mediaError) {
-          console.error('MediaLibrary failed:', mediaError);
-          // Fallback to StorageAccessFramework
-          const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-          if (permissions.granted) {
-            const base64 = await FileSystem.readAsStringAsync(fileUri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
-              permissions.directoryUri,
-              `Financial_Report_${selectedDate.fromDate}_to_${selectedDate.toDate}.pdf`,
-              'application/pdf'
-            );
-            await FileSystem.writeAsStringAsync(fileUri, base64, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            fileUri = `Downloads/Financial_Report_${selectedDate.fromDate}_to_${selectedDate.toDate}.pdf`;
-          } else {
-            throw new Error('Storage access permission denied.');
-          }
+          // Create the file in the selected directory
+          const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
+            permissions.directoryUri,
+            safeFilename,
+            'application/pdf'
+          );
+
+          // Write the base64 content to the newly created file
+          await FileSystem.writeAsStringAsync(fileUri, base64, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+
+          alert(`PDF file successfully saved!`);
+        } else {
+          console.log('User cancelled directory selection or permission denied.');
         }
       } else {
         // iOS: Save to document directory and allow sharing
-        fileUri = `${FileSystem.documentDirectory}Financial_Report_${selectedDate.fromDate}_to_${selectedDate.toDate}.pdf`;
+        const fileUri = `${FileSystem.documentDirectory}${safeFilename}`;
         await FileSystem.moveAsync({ from: uri, to: fileUri });
-      }
 
-      // Show success message
-      alert(`PDF file saved to: ${fileUri}${Platform.OS === 'ios' ? '\nYou can share it to save to another location.' : ''}`);
-
-      // On iOS, offer to share the file
-      if (Platform.OS === 'ios') {
+        // On iOS, offer to share the file
         await Sharing.shareAsync(fileUri);
       }
     } catch (error) {
@@ -392,10 +321,10 @@ const FinancialReport = ({ onClose, selectedDate, Reports }) => {
         {/* Search Bar */}
         <View style={styles(currentColors).searchContainer}>
           <View style={styles(currentColors).searchInputWrapper}>
-            <VectorIcons 
-              name="search" 
-              size={20} 
-              color={currentColors.dropdownText} 
+            <VectorIcons
+              name="search"
+              size={20}
+              color={currentColors.dropdownText}
               style={styles(currentColors).searchIcon}
             />
             <TextInput

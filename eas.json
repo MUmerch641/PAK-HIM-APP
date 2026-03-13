@@ -20,7 +20,7 @@
     "production": {
       "autoIncrement": true,
       "android": {
-        "buildType": "apk"
+        "buildType": "app-bundle"
       },
       "env": {
         "API_URL": "https://pakhims.com/user-api"
