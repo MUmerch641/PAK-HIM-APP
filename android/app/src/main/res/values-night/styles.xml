@@ -1,0 +1,12 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+  <!-- Dark mode theme overrides -->
+  <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+    <!-- Opt out of forced edge-to-edge on Android 15+ (API 35) -->
+    <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
+    <item name="colorPrimary">@color/colorPrimary</item>
+    <!-- Keep status bar white even in dark mode (app uses light UI) -->
+    <item name="android:statusBarColor">#ffffff</item>
+    <item name="windowActionBar">false</item>
+    <item name="windowNoTitle">true</item>
+  </style>
+</resources>

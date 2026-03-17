@@ -14,3 +14,7 @@ local.properties
 
 # Bundle artifacts
 *.jsbundle
+
+# Release keystore - NEVER commit this!
+*.jks
+*.keystore

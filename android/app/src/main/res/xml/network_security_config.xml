@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Config
+  - Blocks all cleartext (HTTP) traffic in production builds.
+  - Only the debug build manifest overrides this to allow cleartext for Metro/dev tools.
+-->
+<network-security-config>
+  <base-config cleartextTrafficPermitted="false">
+    <trust-anchors>
+      <certificates src="system"/>
+    </trust-anchors>
+  </base-config>
+</network-security-config>

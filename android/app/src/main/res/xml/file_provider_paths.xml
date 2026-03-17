@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  FileProvider paths — required for expo-file-system and expo-sharing
+  to share PDF/Excel files generated inside the app.
+-->
+<paths>
+  <!-- App-private files directory (Context.getFilesDir()) -->
+  <files-path name="files" path="."/>
+  <!-- App cache directory (Context.getCacheDir()) -->
+  <cache-path name="cache" path="."/>
+  <!-- External files directory — for saving reports to Downloads etc. -->
+  <external-files-path name="external_files" path="."/>
+  <!-- External cache -->
+  <external-cache-path name="external_cache" path="."/>
+</paths>
