@@ -3,7 +3,7 @@
     "name": "PakHims",
     "slug": "pakhims",
     "owner": "mumerch",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -14,7 +14,7 @@
       "bundleIdentifier": "com.mumerch.pakhims"
     },
     "android": {
-      "versionCode": 2,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#fffd"
