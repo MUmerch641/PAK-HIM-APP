@@ -138,8 +138,7 @@ export interface ProjectProfileData {
 // Function to log in the user
 export const loginUser = async (
   email: string,
-  password: string,
-  rememberMe: boolean = false
+  password: string
 ): Promise<UserData | null> => {
   try {
     const response = await api.post<ApiResponse>("/auth/login", {
@@ -157,14 +156,6 @@ export const loginUser = async (
     setAuthToken(userData.token);
 
     await AsyncStorage.setItem("userData", JSON.stringify(userData));
-
-    if (rememberMe) {
-      await AsyncStorage.setItem("rememberMe", "true");
-      await AsyncStorage.setItem("rememberedEmail", email);
-    } else {
-      await AsyncStorage.removeItem("rememberMe");
-      await AsyncStorage.removeItem("rememberedEmail");
-    }
 
     return userData;
   } catch (error: any) {
@@ -222,16 +213,13 @@ export const signUpUser = async (
 // Function to check if a user has "Remember Me" enabled
 export const checkRememberedUser = async (): Promise<UserData | null> => {
   try {
-    const isRemembered = await AsyncStorage.getItem("rememberMe");
-    if (isRemembered === "true") {
-      const token = await AsyncStorage.getItem("authToken");
-      const userDataString = await AsyncStorage.getItem("userData");
+    const token = await AsyncStorage.getItem("authToken");
+    const userDataString = await AsyncStorage.getItem("userData");
 
-      if (token && userDataString) {
-        const userData = JSON.parse(userDataString);
-        setAuthToken(token);
-        return userData;
-      }
+    if (token && userDataString) {
+      const userData = JSON.parse(userDataString);
+      setAuthToken(token);
+      return userData;
     }
     return null;
   } catch (error) {

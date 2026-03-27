@@ -171,7 +171,7 @@ const VerificationScreen: React.FC<VerificationScreenProps> = ({
                                         focusedIndex === index && styles(currentColors).codeInputFocused,
                                         showError[index] && styles(currentColors).codeInputError,
                                     ]}
-                                    placeholderTextColor={currentColors.actionMenuTextColor}
+                                    placeholderTextColor={currentColors?.placeholderColor || "#888888"}
                                     onSubmitEditing={handleSubmit}
                                 />
                                 {index === 2 && <View style={styles(currentColors).spaceBetweenInputs} />}
@@ -250,7 +250,7 @@ const styles = (currentColors: any) => StyleSheet.create({
         borderRadius: moderateScale(5),
         textAlign: 'center',
         fontSize: moderateScale(20),
-        color: currentColors.dropdownText,
+        color: currentColors?.AppointmentColor || '#000000',
         backgroundColor: currentColors.dropdownBackground,
     },
     codeInputFocused: {

@@ -67,7 +67,7 @@ interface PatientData {
   city: string;
   reference: string;
   extra?: Record<string, unknown>; // Optional with default
-  appointment: Appointment;
+  appointment?: Appointment;
 }
 
 interface PatientResponse {
@@ -131,12 +131,14 @@ const validateHexId = (id: string): boolean => {
 
 export const registerPatient = async (patientData: PatientData): Promise<any> => {
   try {
-    if (!validateHexId(patientData.appointment.doctorId)) {
-      throw new Error("Invalid doctorId format");
-    }
-    for (const serviceId of patientData.appointment.services) {
-      if (!validateHexId(serviceId)) {
-        throw new Error("Invalid serviceId format");
+    if (patientData.appointment) {
+      if (!validateHexId(patientData.appointment.doctorId)) {
+        throw new Error("Invalid doctorId format");
+      }
+      for (const serviceId of patientData.appointment.services) {
+        if (!validateHexId(serviceId)) {
+          throw new Error("Invalid serviceId format");
+        }
       }
     }
     const token = await getAuthToken();
@@ -166,6 +168,46 @@ export const registerPatient = async (patientData: PatientData): Promise<any> =>
     }
   } catch (error: any) {
     console.error("Error registering patient:", error.response?.data || error.message);
+
+    Toast.show({
+      type: "error",
+      text1: "Registration Failed",
+      text2: error.response?.data?.message || "Something went wrong",
+    });
+
+    throw error;
+  }
+};
+
+export const registerNewPatient = async (patientData: Omit<PatientData, 'appointment'> | any): Promise<any> => {
+  try {
+    const token = await getAuthToken();
+    if (!token) {
+      Toast.show({
+        type: "error",
+        text1: "Authentication Error",
+        text2: "No authentication token found",
+      });
+      throw new Error("No auth token found");
+    }
+
+    const response = await axios.post(`${BASE_URL}/patient-registration/registerNewPatient`, patientData, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.status === 201 || response.status === 200) {
+      Toast.show({
+        type: "success",
+        text1: "Success",
+        text2: "Patient registered successfully",
+      });
+      return response.data;
+    }
+  } catch (error: any) {
+    console.error("Error registering new patient:", error.response?.data || error.message);
 
     Toast.show({
       type: "error",

@@ -1162,11 +1162,11 @@ const AppointmentScreen = () => {
     let animatedStyle = {};
     let animatedOpacity = null;
 
-    if (activeTab === "active") {
-      if (isOnlinePatient) {
-        animatedStyle = blueAnimatedStyle;
-        animatedOpacity = blueGlowOpacity;
-      } else if (isHighEmergency) {
+    if (isOnlinePatient) {
+      animatedStyle = blueAnimatedStyle;
+      animatedOpacity = blueGlowOpacity;
+    } else if (activeTab === "active") {
+      if (isHighEmergency) {
         animatedStyle = redAnimatedStyle;
         animatedOpacity = redGlowOpacity;
       } else if (isModerateEmergency) {

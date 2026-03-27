@@ -26,8 +26,8 @@ export const colors = {
     toastSuccessText: '#E0E0FF',
     toastErrorBackground: '#4A1A2E',
     toastErrorBorder: '#FF4444',
-    toastErrorText: '#E0E0FF',
     bgColorCards: '#1e1e42',
+    placeholderColor: '#888888',
   },
   light: {
     background: 'white',
@@ -56,7 +56,7 @@ export const colors = {
     toastSuccessText: '#0066FF',
     toastErrorBackground: '#FFF0F0',
     toastErrorBorder: '#FF4444',
-    toastErrorText: '#FF4444',
     bgColorCards: '#F0F7FF',
+    placeholderColor: '#888888',
   }
 };

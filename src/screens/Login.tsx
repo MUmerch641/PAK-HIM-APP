@@ -14,7 +14,6 @@ const moderateScale = (size: number, factor: number = 0.5): number => size + (sc
 export interface LoginFormData {
   email: string;
   password: string;
-  rememberMe: boolean;
 }
 
 // LoginScreen.tsx
@@ -55,7 +54,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, style }) => {
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
-    rememberMe: false,
   });
 
   const [showResetPassword, setShowResetPassword] = useState(false);
@@ -104,8 +102,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, style }) => {
     try {
       const userData = await loginUser(
         formData.email.trim(),
-        formData.password.trim(),
-        formData.rememberMe // Pass the rememberMe value
+        formData.password.trim()
       );
 
       if (!userData) {
@@ -199,21 +196,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, style }) => {
           />
 
           <View style={styles(currentColors).optionsContainer}>
-            <TouchableOpacity
-              style={styles(currentColors).rememberContainer}
-              onPress={() => setFormData({ ...formData, rememberMe: !formData.rememberMe })}
-            >
-              <View
-                style={[
-                  styles(currentColors).checkbox,
-                  { backgroundColor: formData.rememberMe ? currentColors.activeTabBackground : 'transparent' },
-                ]}
-              >
-                {formData.rememberMe && <Text style={styles(currentColors).checked}>✓</Text>}
-              </View>
-              <Text style={styles(currentColors).rememberText}>Remember Me</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity onPress={() => setShowResetPassword(true)}>
               <Text style={styles(currentColors).forgotText}>Forgot Password?</Text>
             </TouchableOpacity>
@@ -315,7 +297,7 @@ const styles = (currentColors: any) => StyleSheet.create({
   },
   optionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginBottom: verticalScale(18),
   },

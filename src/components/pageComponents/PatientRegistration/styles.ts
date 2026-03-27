@@ -114,11 +114,12 @@ export const getStyles = (currentColors: any) =>
             padding: 12,
             marginBottom: 16,
             backgroundColor: currentColors.dropdownBackground,
-            color: currentColors.AppointmentColor,
+            color: "#000000",
             fontSize: 15,
         },
         readOnlyInput: {
             backgroundColor: currentColors.dropdownBorder + "40",
+            color: "#000000",
         },
         radioGroup: {
             marginBottom: 16,

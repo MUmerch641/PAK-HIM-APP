@@ -79,7 +79,7 @@ const Input: React.FC<InputProps & { currentColors?: any }> = ({
                         { borderColor: isFocused ? currentColors.activeTabBackground : showError ? 'red' : currentColors.dropdownBorder },
                     ]}
                     placeholder={placeholder}
-                    placeholderTextColor={currentColors.actionMenuTextColor}
+                    placeholderTextColor={currentColors?.placeholderColor || "#888888"}
                     value={value}
                     onChangeText={onChangeText}
                     secureTextEntry={isPasswordVisible}
@@ -435,7 +435,7 @@ const styles = (currentColors: any) => StyleSheet.create({
         fontSize: moderateScale(14),
         flex: 1,
         backgroundColor: currentColors?.dropdownBackground || '#fff',
-        color: currentColors?.dropdownText || '#000',
+        color: currentColors?.AppointmentColor || '#000000',
     },
     eyeIcon: {
         position: 'absolute',

@@ -23,7 +23,7 @@ import {
     Doctor,
     Service,
 } from '../ApiHandler/Appointment';
-import { registerPatient } from '../ApiHandler/Patient';
+import { registerPatient, registerNewPatient } from '../ApiHandler/Patient';
 import socketService from '../socket';
 
 interface SlotSelectionScreenProps {
@@ -71,7 +71,7 @@ export default function SlotSelectionScreen({
     // Generate next 14 days
     const availableDates = useMemo(() => {
         const dates: { dateString: string; dayName: string; dayNum: number; monthName: string; isToday: boolean }[] = [];
-        for (let i = 0; i < 14; i++) {
+        for (let i = 0; i < 3; i++) {
             const d = new Date();
             d.setDate(d.getDate() + i);
             dates.push({
@@ -190,7 +190,6 @@ export default function SlotSelectionScreen({
             const [timeFrom, timeTo] = selectedSlot.slot.split(' - ');
             let patientId = patientData?.appointment?.patientId || '';
 
-            // Register new patient if needed
             if (!patientId && !existingPatient) {
                 const requestBody = {
                     mrn: 0,
@@ -199,14 +198,14 @@ export default function SlotSelectionScreen({
                     gender: patientData?.gender || 'female',
                     dob: patientData?.dateOfBirth instanceof Date
                         ? patientData.dateOfBirth.toISOString().split('T')[0] : '',
-                    phoneNumber: patientData?.phoneNo || '',
+                    phonNumber: patientData?.phoneNo || '',
                     cnic: patientData?.cnic || '',
-                    helthId: patientData?.healthId || '',
+                    healthId: patientData?.healthId || '',
                     city: patientData?.city || '',
                     reference: patientData?.reference || '',
-                    extra: patientData?.extra || {},
+                    extra: patientData?.extra || {}
                 };
-                const regResponse = await registerPatient(requestBody as any);
+                const regResponse = await registerNewPatient(requestBody as any);
                 if (regResponse?.isSuccess && regResponse.data?._id) {
                     patientId = regResponse.data._id;
                 } else {
@@ -286,6 +285,23 @@ export default function SlotSelectionScreen({
     return (
         <View style={{ flex: 1, backgroundColor: currentColors.background }}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: moderateScale(12) }}>
+
+                {/* Patient Info Card */}
+                <View style={localStyles.patientCard}>
+                    <View style={localStyles.patientCardLeft}>
+                        <View style={localStyles.patientAvatar}>
+                            <Ionicons name="person-outline" size={moderateScale(20)} color="#22C55E" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={localStyles.patientName} numberOfLines={1}>
+                                {patientData?.patientName || existingPatient?.patientName || 'New Patient'}
+                            </Text>
+                            <Text style={localStyles.patientPhone} numberOfLines={1}>
+                                {patientData?.phoneNo || existingPatient?.phonNumber || 'No Phone provided'}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
 
                 {/* Doctor Info Card */}
                 <View style={localStyles.doctorCard}>
@@ -487,6 +503,20 @@ export default function SlotSelectionScreen({
 
 const slotStyles = (currentColors: any) =>
     StyleSheet.create({
+        // Patient Card
+        patientCard: {
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            backgroundColor: currentColors.dropdownBackground || '#FFF', borderRadius: 12, padding: moderateScale(12),
+            marginBottom: verticalScale(8), borderWidth: 1, borderColor: currentColors.dropdownBorder,
+        },
+        patientCardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+        patientAvatar: {
+            width: moderateScale(36), height: moderateScale(36), borderRadius: moderateScale(18),
+            backgroundColor: '#E6F7F0', justifyContent: 'center', alignItems: 'center', marginRight: moderateScale(10),
+        },
+        patientName: { fontSize: moderateScale(14), fontWeight: '600', color: currentColors.AppointmentColor },
+        patientPhone: { fontSize: moderateScale(11), color: '#888', marginTop: 1 },
+
         // Doctor Card
         doctorCard: {
             flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

@@ -40,6 +40,9 @@ export default function SearchPatientBar({
                     value={searchQuery}
                     onChangeText={handleSearchInputChange}
                     onSubmitEditing={handleSearchSubmit}
+                    keyboardType={
+                        searchType === "MRN" || searchType === "Mobile No" ? "numeric" : "default"
+                    }
                 />
                 {searchQuery.length > 0 && (
                     <TouchableOpacity onPress={() => setSearchQuery("")} style={styles.clearButton}>
